@@ -1095,84 +1095,146 @@ async function saveExtra(qid) {
   } catch(e) { toast('Error agregando ítem: '+e.message,'r'); }
 }
 
-// MODAL: PM
-let PM_ITEMS = [{cod:'',quiebre:'',sol:'',unidad:'u',obs:''}];
+// MODAL: PM — con buscador y sin pérdida de datos
+let PM_DATA = { urgencia:'normal', items:[] };
+
 function mPM() {
   const o = DB.obras.find(x=>x.id===OID);
-  PM_ITEMS = [{cod:'',quiebre:'',sol:'',unidad:'u',obs:''}];
   const qs = DB.quiebres[OID]||[];
-  const mats = [...new Map(qs.flatMap(q=>q.materiales||[]).map(m=>[(m.codigo||m.cod),m])).values()];
-  showM(`Nuevo PM — ${o?.id}`,`
-    <div class="fr2">
+  const allMats = [...new Map(qs.flatMap(q=>q.materiales||[]).map(m=>[(m.codigo||m.cod),m])).values()];
+  PM_DATA = { urgencia:'normal', items:[], allMats, qs };
+
+  showM(`Nuevo PM — ${o?.id}`, `
+    <div class="fr2" style="margin-bottom:12px">
       <div class="fg"><label class="fl">Urgencia</label>
-        <select class="fs" id="pm-urg"><option value="normal">Normal</option><option value="urgente">Urgente</option></select></div>
-      <div class="fg"><label class="fl">Solicitante</label><input class="fi" value="${o?.encargado||''}" disabled/></div>
+        <select class="fs" id="pm-urg" onchange="PM_DATA.urgencia=this.value">
+          <option value="normal">Normal</option>
+          <option value="urgente">Urgente</option>
+        </select></div>
+      <div class="fg"><label class="fl">Solicitante</label>
+        <input class="fi" value="${o?.encargado||''}" disabled/></div>
     </div>
     <div class="sep">Materiales solicitados</div>
-    <div id="pmwrap">${rPMItems(mats,qs)}</div>
-    <button class="btn btn-g btn-sm" style="width:100%;margin-bottom:12px" onclick="addPMItem()">+ Agregar material</button>
+    <div id="pm-items-wrap"></div>
+    <button class="btn btn-g btn-sm" style="width:100%;margin-bottom:12px" onclick="pmAddItem()">+ Agregar material</button>
     <div class="mact">
       <button class="btn btn-o" onclick="closeM()">Cancelar</button>
       <button class="btn btn-g" onclick="savePM('borrador')">Guardar borrador</button>
       <button class="btn btn-v" onclick="savePM('enviado')">Enviar PM →</button>
-    </div>`,660);
+    </div>`, 700);
+  pmAddItem();
 }
-function rPMItems(mats,qs) {
-  mats=mats||[]; qs=qs||[];
-  return PM_ITEMS.map((_,i)=>`
-    <div style="background:var(--bg3);border:1px solid var(--wire);border-radius:8px;padding:10px 12px;margin-bottom:8px;position:relative">
-      <div style="font-size:9px;color:var(--chalk3);font-family:var(--fm);font-weight:600;text-transform:uppercase;margin-bottom:8px">Ítem ${i+1}</div>
-      ${PM_ITEMS.length>1?`<button onclick="rmPMItem(${i})" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--err);cursor:pointer;font-size:13px;padding:2px 6px">✕</button>`:''}
-      <div class="fr2" style="margin-bottom:8px">
-        <div class="fg" style="margin:0"><label class="fl">Material</label>
-          <select class="fs" id="pm-sel-${i}" onchange="onPMSel(${i})">
-            <option value="">Seleccioná del catálogo...</option>
-            ${mats.map(m=>`<option value="${m.codigo||m.cod}|${m.unidad}">${m.codigo||m.cod} — ${m.descripcion||m.desc}</option>`).join('')}
-          </select></div>
-        <div class="fg" style="margin:0"><label class="fl">Quiebre destino</label>
-          <select class="fs" id="pm-q-${i}">
-            <option value="">Seleccioná quiebre...</option>
-            ${qs.filter(q=>q.nivel>=2).map(q=>`<option value="${q.codigo}">${q.codigo} — ${(q.descripcion||q.desc||'').substring(0,40)}</option>`).join('')}
-          </select></div>
+
+function pmAddItem() {
+  const idx = PM_DATA.items.length;
+  PM_DATA.items.push({ cod:'', desc:'', quiebre:'', qty:0, unidad:'u', obs:'' });
+  const wrap = $('pm-items-wrap');
+  const div = document.createElement('div');
+  div.id = `pm-item-${idx}`;
+  div.style.cssText = 'background:var(--bg3);border:1px solid var(--wire);border-radius:8px;padding:12px;margin-bottom:8px;position:relative';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:9px;color:var(--chalk3);font-family:var(--fm);font-weight:600;text-transform:uppercase">Ítem ${idx+1}</span>
+      ${idx>0?`<button onclick="pmRemoveItem(${idx})" style="background:none;border:none;color:var(--err);cursor:pointer;font-size:13px;padding:2px 6px">✕ Quitar</button>`:''}
+    </div>
+    <div style="margin-bottom:8px">
+      <label class="fl">Buscar material</label>
+      <input class="fi" id="pm-search-${idx}" placeholder="Escribí código o nombre..." 
+        oninput="pmFilterMats(${idx},this.value)" autocomplete="off"/>
+      <div id="pm-dropdown-${idx}" style="display:none;position:absolute;z-index:999;background:var(--bg2);border:1px solid var(--wire);border-radius:6px;max-height:200px;overflow-y:auto;width:calc(100% - 24px);box-shadow:0 4px 20px rgba(0,0,0,.4)"></div>
+    </div>
+    <div id="pm-selected-${idx}" style="display:none;background:var(--arc4);border:1px solid var(--arc3);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:11px">
+      <div style="display:flex;justify-content:space-between">
+        <span id="pm-sel-label-${idx}" style="color:var(--arc);font-weight:600"></span>
+        <button onclick="pmClearMat(${idx})" style="background:none;border:none;color:var(--chalk3);cursor:pointer;font-size:11px">✕ Cambiar</button>
       </div>
-      <div class="fr3">
-        <div class="fg" style="margin:0"><label class="fl">Cantidad</label><input class="fi" id="pm-qty-${i}" type="number" placeholder="0"/></div>
-        <div class="fg" style="margin:0"><label class="fl">Unidad</label><input class="fi" id="pm-uni-${i}" placeholder="uni/mt"/></div>
-        <div class="fg" style="margin:0"><label class="fl">Observación</label><input class="fi" id="pm-obs-${i}" placeholder="Opcional"/></div>
-      </div>
+    </div>
+    <div class="fr2">
+      <div class="fg" style="margin:0"><label class="fl">Quiebre destino</label>
+        <select class="fs" id="pm-q-${idx}" onchange="PM_DATA.items[${idx}].quiebre=this.value">
+          <option value="">Seleccioná quiebre...</option>
+          ${PM_DATA.qs.filter(q=>q.nivel>=2).map(q=>`<option value="${q.codigo}">${q.codigo} — ${(q.descripcion||q.desc||'').substring(0,45)}</option>`).join('')}
+        </select></div>
+      <div class="fg" style="margin:0"><label class="fl">Cantidad</label>
+        <input class="fi" id="pm-qty-${idx}" type="number" placeholder="0" 
+          oninput="PM_DATA.items[${idx}].qty=parseFloat(this.value)||0"/></div>
+    </div>
+    <div class="fr2" style="margin-top:8px">
+      <div class="fg" style="margin:0"><label class="fl">Unidad</label>
+        <input class="fi" id="pm-uni-${idx}" placeholder="uni/mt" value="u"
+          oninput="PM_DATA.items[${idx}].unidad=this.value"/></div>
+      <div class="fg" style="margin:0"><label class="fl">Observación</label>
+        <input class="fi" id="pm-obs-${idx}" placeholder="Opcional"
+          oninput="PM_DATA.items[${idx}].obs=this.value"/></div>
+    </div>`;
+  wrap.appendChild(div);
+}
+
+function pmFilterMats(idx, q) {
+  const dd = $(`pm-dropdown-${idx}`);
+  if (!q || q.length < 2) { dd.style.display='none'; return; }
+  const lower = q.toLowerCase();
+  const matches = PM_DATA.allMats.filter(m =>
+    (m.codigo||m.cod||'').toLowerCase().includes(lower) ||
+    (m.descripcion||m.desc||'').toLowerCase().includes(lower)
+  ).slice(0, 20);
+  if (!matches.length) { dd.style.display='none'; return; }
+  dd.style.display = 'block';
+  dd.innerHTML = matches.map(m => `
+    <div onclick="pmSelectMat(${idx},'${(m.codigo||m.cod).replace(/'/g,"\'")}','${(m.descripcion||m.desc||'').replace(/'/g,"\'").substring(0,60)}','${m.unidad||'u'}')"
+      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--bg3);font-size:11px"
+      onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+      <span class="mono" style="color:var(--arc);font-size:10px">${m.codigo||m.cod}</span>
+      <span style="margin-left:8px;color:var(--chalk)">${(m.descripcion||m.desc||'').substring(0,60)}</span>
+      <span style="margin-left:8px;color:var(--chalk3);font-size:10px">${m.unidad||''}</span>
     </div>`).join('');
 }
-function onPMSel(i) { const val=$(`pm-sel-${i}`).value; if(!val)return; const[,uni]=val.split('|'); if($(`pm-uni-${i}`))$(`pm-uni-${i}`).value=uni||'u'; }
-function addPMItem() {
-  PM_ITEMS.push({cod:'',quiebre:'',sol:'',unidad:'u',obs:''});
-  const qs=DB.quiebres[OID]||[];
-  const mats=[...new Map(qs.flatMap(q=>q.materiales||[]).map(m=>[(m.codigo||m.cod),m])).values()];
-  $('pmwrap').innerHTML=rPMItems(mats,qs);
+
+function pmSelectMat(idx, cod, desc, unidad) {
+  PM_DATA.items[idx].cod = cod;
+  PM_DATA.items[idx].desc = desc;
+  PM_DATA.items[idx].unidad = unidad;
+  $(`pm-search-${idx}`).value = '';
+  $(`pm-dropdown-${idx}`).style.display = 'none';
+  $(`pm-selected-${idx}`).style.display = 'block';
+  $(`pm-sel-label-${idx}`).textContent = `${cod} — ${desc}`;
+  const uniEl = $(`pm-uni-${idx}`);
+  if (uniEl) uniEl.value = unidad;
 }
-function rmPMItem(i) {
-  PM_ITEMS.splice(i,1);
-  const qs=DB.quiebres[OID]||[];
-  const mats=[...new Map(qs.flatMap(q=>q.materiales||[]).map(m=>[(m.codigo||m.cod),m])).values()];
-  $('pmwrap').innerHTML=rPMItems(mats,qs);
+
+function pmClearMat(idx) {
+  PM_DATA.items[idx].cod = '';
+  PM_DATA.items[idx].desc = '';
+  $(`pm-selected-${idx}`).style.display = 'none';
+  $(`pm-search-${idx}`).value = '';
 }
+
+function pmRemoveItem(idx) {
+  const el = $(`pm-item-${idx}`);
+  if (el) el.remove();
+  PM_DATA.items[idx] = null;
+}
+
 async function savePM(estado) {
   const o = DB.obras.find(x=>x.id===OID);
-  const items = PM_ITEMS.map((_,i)=>{
-    const selVal = $(`pm-sel-${i}`)?.value||'';
-    const [cod] = (selVal||'').split('|');
-    const qs = DB.quiebres[OID]||[];
-    const mat = qs.flatMap(q=>q.materiales||[]).find(m=>(m.codigo||m.cod)===cod);
-    return {codigo:cod||'',descripcion:mat?.descripcion||mat?.desc||cod,
-      quiebre_codigo:$(`pm-q-${i}`)?.value||'',
-      cantidad_solicitada:parseFloat($(`pm-qty-${i}`)?.value||0)||0,
-      unidad:$(`pm-uni-${i}`)?.value||mat?.unidad||'u',
-      observacion:$(`pm-obs-${i}`)?.value||'',
-      cantidad_entregada:0,saldo:0};
-  }).filter(it=>it.codigo&&it.cantidad_solicitada>0);
-  if (!items.length) { toast('Completá al menos un ítem','r'); return; }
+  const items = PM_DATA.items
+    .filter(it => it && it.cod && it.qty > 0)
+    .map(it => ({
+      codigo: it.cod,
+      descripcion: it.desc,
+      quiebre_codigo: it.quiebre,
+      cantidad_solicitada: it.qty,
+      unidad: it.unidad || 'u',
+      observacion: it.obs
+    }));
+  if (!items.length) { toast('Completá al menos un ítem con material y cantidad','r'); return; }
   const pmId = `PM-${o.id}-${String(Date.now()).slice(-4)}`;
-  const pm = {id:pmId,obra_id:o.id,fecha:new Date().toISOString().split('T')[0],
-    estado,urgencia:$('pm-urg')?.value||'normal',solicitante:o.encargado};
+  const pm = {
+    id: pmId, obra_id: o.id,
+    fecha: new Date().toISOString().split('T')[0],
+    estado, urgencia: PM_DATA.urgencia || 'normal',
+    solicitante: o.encargado
+  };
   try {
     await api('/pms', { method:'POST', body:pm, return:'minimal' });
     for (const it of items) {
@@ -1189,9 +1251,18 @@ async function savePM(estado) {
       };
       await api('/pm_items', { method:'POST', body:pmItem, return:'minimal' });
     }
-    pm.items = items;
+    pm.items = items.map(it => ({
+      descripcion: it.descripcion,
+      codigo_material: it.codigo,
+      quiebre_destino: it.quiebre_codigo,
+      cantidad_solicitada: it.cantidad_solicitada,
+      cantidad_entregada: 0,
+      saldo: it.cantidad_solicitada,
+      unidad: it.unidad
+    }));
     DB.pms.unshift(pm);
-    closeM(); render(); toast(`PM ${estado==='enviado'?'enviado':'guardado'} con ${items.length} ítem(s) ✓`);
+    closeM(); render();
+    toast(`PM ${estado==='enviado'?'enviado':'guardado'} con ${items.length} ítem(s) ✓`);
   } catch(e) { toast('Error creando PM: '+e.message,'r'); }
 }
 
