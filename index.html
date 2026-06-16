@@ -10,7 +10,7 @@
 :root{
   --bg:#080b10;--bg2:#0d1119;--bg3:#131924;--bg4:#1a2030;--bg5:#202840;
   --wire:#1e2840;--wire2:#2a3854;--wire3:#364a6e;
-  --chalk:#c8d8f0;--chalk2:#8a9dc0;--chalk3:#4a5a78;--chalk4:#2a3550;
+  --chalk:#ddeeff;--chalk2:#a0b8d8;--chalk3:#6a80a8;--chalk4:#3a4f70;
   --volt:#00ff88;--volt2:#00cc6a;--volt3:#004422;--volt4:#001a0e;
   --arc:#3d9eff;--arc2:#1a7aff;--arc3:#0a2a5e;--arc4:#051428;
   --heat:#ff6b35;--heat3:#3d1500;
@@ -493,6 +493,10 @@ function buildNav() {
     elec.forEach(o=>items.push({id:'obra:'+o.id,i:'◎',l:o.id,tipo:'e',sub:o.nombre}));
   }
   items.push({g:'Operaciones'});
+  if (OID) {
+    items.push({id:'pms',i:'↗',l:'Pedidos (PM)',cnt:()=>DB.pms.filter(p=>p.obra_id===OID&&p.estado==='enviado').length});
+    items.push({id:'vcs',i:'✓',l:'Vales (VC)'});
+  }
   if (SESION?.rol==='admin'||SESION?.rol==='jefe_area') {
     items.push({g:'Sistema'});
     items.push({id:'catalogo',i:'◈',l:'Catálogo'});
@@ -518,9 +522,10 @@ function renderNav() {
 }
 
 function nav(id) {
-  if (id.startsWith('obra:')) { OID=id.replace('obra:',''); SEC='obra-detalle'; }
-  else { SEC=id; OID=null; }
-  TAB='quiebres'; renderNav(); render();
+  if (id.startsWith('obra:')) { OID=id.replace('obra:',''); SEC='obra-detalle'; TAB='quiebres'; }
+  else if ((id==='pms'||id==='vcs') && OID) { SEC='obra-detalle'; TAB=id; }
+  else { SEC=id; OID=null; TAB='quiebres'; }
+  renderNav(); render();
 }
 
 // ═══════════════════════════════════════════════════════
