@@ -493,8 +493,6 @@ function buildNav() {
     elec.forEach(o=>items.push({id:'obra:'+o.id,i:'◎',l:o.id,tipo:'e',sub:o.nombre}));
   }
   items.push({g:'Operaciones'});
-  items.push({id:'pms',i:'↗',l:'Pedidos (PM)',cnt:()=>DB.pms.filter(p=>p.estado==='enviado').length});
-  items.push({id:'vcs',i:'✓',l:'Vales (VC)'});
   if (SESION?.rol==='admin'||SESION?.rol==='jefe_area') {
     items.push({g:'Sistema'});
     items.push({id:'catalogo',i:'◈',l:'Catálogo'});
@@ -758,7 +756,9 @@ function rPMs(pms) {
       <div style="display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
         <div><div class="mono" style="font-size:13px;font-weight:700">${pm.id}</div>
         <div style="font-size:10px;margin-top:2px;font-family:var(--fm)" class="dim">${fmtF(pm.fecha)} · ${pm.solicitante||'—'}</div></div>
-        <div style="display:flex;gap:5px;align-items:center">${bdg(pm.urgencia)}${bdg(pm.estado)}
+        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+          ${bdg(pm.urgencia)}${bdg(pm.estado)}
+          <button class="btn btn-sm btn-b" onclick="exportPM('${pm.id}')">↓ Excel</button>
           <button class="btn btn-sm" style="background:var(--err2);color:var(--err);border:1px solid var(--err3)" onclick="eliminarPM('${pm.id}')">✕ Eliminar</button>
         </div>
       </div>
@@ -1137,76 +1137,58 @@ function pmAddItem() {
       <span style="font-size:9px;color:var(--chalk3);font-family:var(--fm);font-weight:600;text-transform:uppercase">Ítem ${idx+1}</span>
       ${idx>0?`<button onclick="pmRemoveItem(${idx})" style="background:none;border:none;color:var(--err);cursor:pointer;font-size:13px;padding:2px 6px">✕ Quitar</button>`:''}
     </div>
-    <div style="margin-bottom:8px">
-      <label class="fl">Buscar material</label>
-      <input class="fi" id="pm-search-${idx}" placeholder="Escribí código o nombre..." 
-        oninput="pmFilterMats(${idx},this.value)" autocomplete="off"/>
-      <div id="pm-dropdown-${idx}" style="display:none;position:absolute;z-index:999;background:var(--bg2);border:1px solid var(--wire);border-radius:6px;max-height:200px;overflow-y:auto;width:calc(100% - 24px);box-shadow:0 4px 20px rgba(0,0,0,.4)"></div>
-    </div>
-    <div id="pm-selected-${idx}" style="display:none;background:var(--arc4);border:1px solid var(--arc3);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:11px">
-      <div style="display:flex;justify-content:space-between">
-        <span id="pm-sel-label-${idx}" style="color:var(--arc);font-weight:600"></span>
-        <button onclick="pmClearMat(${idx})" style="background:none;border:none;color:var(--chalk3);cursor:pointer;font-size:11px">✕ Cambiar</button>
-      </div>
+    <div class="fr2" style="margin-bottom:8px">
+      <div class="fg" style="margin:0"><label class="fl">1. Quiebre destino</label>
+        <select class="fs" id="pm-q-${idx}" onchange="pmOnQuiebre(${idx},this.value)">
+          <option value="">Seleccioná quiebre...</option>
+          ${PM_DATA.qs.filter(q=>q.nivel>=2).map(q=>`<option value="${q.codigo}|${q.id}">${q.codigo} — ${(q.descripcion||q.desc||'').substring(0,45)}</option>`).join('')}
+        </select></div>
+      <div class="fg" style="margin:0"><label class="fl">2. Material</label>
+        <select class="fs" id="pm-mat-${idx}" onchange="pmOnMat(${idx},this.value)" disabled>
+          <option value="">Primero seleccioná quiebre...</option>
+        </select></div>
     </div>
     <div class="fr2">
-      <div class="fg" style="margin:0"><label class="fl">Quiebre destino</label>
-        <select class="fs" id="pm-q-${idx}" onchange="PM_DATA.items[${idx}].quiebre=this.value">
-          <option value="">Seleccioná quiebre...</option>
-          ${PM_DATA.qs.filter(q=>q.nivel>=2).map(q=>`<option value="${q.codigo}">${q.codigo} — ${(q.descripcion||q.desc||'').substring(0,45)}</option>`).join('')}
-        </select></div>
       <div class="fg" style="margin:0"><label class="fl">Cantidad</label>
-        <input class="fi" id="pm-qty-${idx}" type="number" placeholder="0" 
+        <input class="fi" id="pm-qty-${idx}" type="number" placeholder="0"
           oninput="PM_DATA.items[${idx}].qty=parseFloat(this.value)||0"/></div>
-    </div>
-    <div class="fr2" style="margin-top:8px">
       <div class="fg" style="margin:0"><label class="fl">Unidad</label>
         <input class="fi" id="pm-uni-${idx}" placeholder="uni/mt" value="u"
           oninput="PM_DATA.items[${idx}].unidad=this.value"/></div>
-      <div class="fg" style="margin:0"><label class="fl">Observación</label>
-        <input class="fi" id="pm-obs-${idx}" placeholder="Opcional"
-          oninput="PM_DATA.items[${idx}].obs=this.value"/></div>
-    </div>`;
+    </div>
+    <div class="fg" style="margin-top:8px;margin-bottom:0"><label class="fl">Observación</label>
+      <input class="fi" id="pm-obs-${idx}" placeholder="Opcional"
+        oninput="PM_DATA.items[${idx}].obs=this.value"/></div>`;
   wrap.appendChild(div);
 }
 
-function pmFilterMats(idx, q) {
-  const dd = $(`pm-dropdown-${idx}`);
-  if (!q || q.length < 2) { dd.style.display='none'; return; }
-  const lower = q.toLowerCase();
-  const matches = PM_DATA.allMats.filter(m =>
-    (m.codigo||m.cod||'').toLowerCase().includes(lower) ||
-    (m.descripcion||m.desc||'').toLowerCase().includes(lower)
-  ).slice(0, 20);
-  if (!matches.length) { dd.style.display='none'; return; }
-  dd.style.display = 'block';
-  dd.innerHTML = matches.map(m => `
-    <div onclick="pmSelectMat(${idx},'${(m.codigo||m.cod).replace(/'/g,"\'")}','${(m.descripcion||m.desc||'').replace(/'/g,"\'").substring(0,60)}','${m.unidad||'u'}')"
-      style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--bg3);font-size:11px"
-      onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-      <span class="mono" style="color:var(--arc);font-size:10px">${m.codigo||m.cod}</span>
-      <span style="margin-left:8px;color:var(--chalk)">${(m.descripcion||m.desc||'').substring(0,60)}</span>
-      <span style="margin-left:8px;color:var(--chalk3);font-size:10px">${m.unidad||''}</span>
-    </div>`).join('');
+function pmOnQuiebre(idx, val) {
+  if (!val) return;
+  const [cod, qid] = val.split('|');
+  PM_DATA.items[idx].quiebre = cod;
+  // Buscar materiales de ese quiebre
+  const q = PM_DATA.qs.find(x => x.id === qid);
+  const mats = q?.materiales || [];
+  const sel = $(`pm-mat-${idx}`);
+  if (!sel) return;
+  if (!mats.length) {
+    sel.innerHTML = '<option value="">Sin materiales en este quiebre</option>';
+    sel.disabled = true;
+  } else {
+    sel.innerHTML = `<option value="">Seleccioná material...</option>` +
+      mats.map(m => `<option value="${m.codigo||m.cod}|${m.unidad}|${(m.descripcion||m.desc||'').replace(/"/g,'')}">${m.codigo||m.cod} — ${(m.descripcion||m.desc||'').substring(0,50)} (${m.unidad})</option>`).join('');
+    sel.disabled = false;
+  }
 }
 
-function pmSelectMat(idx, cod, desc, unidad) {
+function pmOnMat(idx, val) {
+  if (!val) return;
+  const [cod, unidad, desc] = val.split('|');
   PM_DATA.items[idx].cod = cod;
   PM_DATA.items[idx].desc = desc;
   PM_DATA.items[idx].unidad = unidad;
-  $(`pm-search-${idx}`).value = '';
-  $(`pm-dropdown-${idx}`).style.display = 'none';
-  $(`pm-selected-${idx}`).style.display = 'block';
-  $(`pm-sel-label-${idx}`).textContent = `${cod} — ${desc}`;
   const uniEl = $(`pm-uni-${idx}`);
   if (uniEl) uniEl.value = unidad;
-}
-
-function pmClearMat(idx) {
-  PM_DATA.items[idx].cod = '';
-  PM_DATA.items[idx].desc = '';
-  $(`pm-selected-${idx}`).style.display = 'none';
-  $(`pm-search-${idx}`).value = '';
 }
 
 function pmRemoveItem(idx) {
@@ -1318,6 +1300,56 @@ async function guardarGuia(pmId, itemId) {
     render();
     toast(`Guía ${numGuia} registrada · saldo: ${saldo} ${it.unidad||''} ✓`);
   } catch(e) { toast('Error guardando guía: ' + e.message, 'r'); }
+}
+
+function exportPM(pmId) {
+  const pm = DB.pms.find(p => p.id === pmId);
+  if (!pm) return;
+  const o = DB.obras.find(x => x.id === pm.obra_id);
+
+  // Construir datos para el Excel
+  const rows = [
+    ['PEDIDO DE MATERIAL — ' + pmId],
+    [],
+    ['Obra:', o?.nombre || pm.obra_id, '', 'Código:', pm.obra_id],
+    ['Fecha:', fmtF(pm.fecha), '', 'Solicitante:', pm.solicitante || '—'],
+    ['Urgencia:', (pm.urgencia || 'normal').toUpperCase(), '', 'Estado:', (pm.estado || '').toUpperCase()],
+    [],
+    ['N°', 'Código Material', 'Descripción', 'Quiebre Destino', 'Cant. Solicitada', 'Cant. Entregada', 'N° Guía', 'Saldo', 'Unidad'],
+  ];
+
+  (pm.items || []).forEach((it, i) => {
+    rows.push([
+      i + 1,
+      it.codigo_material || it.codigo || '—',
+      it.descripcion || '—',
+      it.quiebre_destino || it.quiebre_codigo || '—',
+      it.cantidad_solicitada || 0,
+      it.cantidad_entregada || 0,
+      it.numero_guia || '—',
+      it.saldo || 0,
+      it.unidad || '—'
+    ]);
+  });
+
+  rows.push([]);
+  rows.push(['', '', '', '', '', '', '', '', '']);
+  rows.push(['Generado por FieldStack ERP — DVSolutions', '', '', '', '', '', '', fmtF(new Date().toISOString()), '']);
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Anchos de columna
+  ws['!cols'] = [
+    {wch:4}, {wch:18}, {wch:45}, {wch:20}, {wch:16}, {wch:16}, {wch:14}, {wch:10}, {wch:8}
+  ];
+
+  // Merge título
+  ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:8} }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'PM');
+  XLSX.writeFile(wb, `${pmId}.xlsx`);
+  toast('Excel generado: ' + pmId + '.xlsx ✓');
 }
 
 async function eliminarPM(pmId) {
