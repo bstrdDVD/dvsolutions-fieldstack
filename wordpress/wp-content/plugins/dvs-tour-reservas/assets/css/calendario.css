@@ -1,0 +1,226 @@
+/* DVS Tour Reservas — estilos del calendario público */
+
+.dvs-tr {
+	max-width: 720px;
+	margin: 0 auto;
+	font-size: 15px;
+	--dvs-libre: #1a9b62;
+	--dvs-parcial: #e0a300;
+	--dvs-lleno: #c23a4b;
+	--dvs-acento: #123c78; /* azul institucional */
+}
+
+.dvs-tr-cabecera {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 10px;
+}
+
+.dvs-tr-mes {
+	margin: 0;
+	font-size: 1.25em;
+	text-transform: capitalize;
+}
+
+.dvs-tr-nav {
+	border: 1px solid #d5dbe4;
+	background: #fff;
+	border-radius: 8px;
+	width: 38px;
+	height: 38px;
+	font-size: 20px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.dvs-tr-nav:hover {
+	background: #f0f4fa;
+}
+
+.dvs-tr-leyenda {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 14px;
+	font-size: 0.8em;
+	color: #5a6474;
+	margin-bottom: 12px;
+}
+
+.dvs-tr-punto {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	margin-right: 4px;
+}
+
+.dvs-tr-punto--libre { background: var(--dvs-libre); }
+.dvs-tr-punto--parcial { background: var(--dvs-parcial); }
+.dvs-tr-punto--lleno { background: var(--dvs-lleno); }
+
+.dvs-tr-grilla {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 6px;
+}
+
+.dvs-tr-diasemana {
+	text-align: center;
+	font-size: 0.75em;
+	font-weight: 600;
+	color: #5a6474;
+	text-transform: uppercase;
+	padding: 4px 0;
+}
+
+.dvs-tr-dia {
+	aspect-ratio: 1;
+	border: 1px solid #d5dbe4;
+	border-radius: 10px;
+	background: #fff;
+	font-size: 1em;
+	font-weight: 600;
+	cursor: pointer;
+	position: relative;
+	transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.dvs-tr-dia--vacio {
+	border: none;
+	background: transparent;
+	cursor: default;
+}
+
+.dvs-tr-dia--libre { border-color: var(--dvs-libre); color: #0d5c39; }
+.dvs-tr-dia--libre:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(26, 155, 98, 0.25); }
+
+.dvs-tr-dia--parcial { border-color: var(--dvs-parcial); color: #7a5900; background: #fff9e8; }
+.dvs-tr-dia--parcial:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(224, 163, 0, 0.25); }
+
+.dvs-tr-dia--lleno,
+.dvs-tr-dia--guiaocupado {
+	background: #f7f2f3;
+	border-color: #e3ccd0;
+	color: #b0a0a4;
+	cursor: not-allowed;
+	text-decoration: line-through;
+}
+
+.dvs-tr-dia:disabled:not(.dvs-tr-dia--lleno):not(.dvs-tr-dia--guiaocupado) {
+	background: #f4f5f7;
+	color: #b5bcc7;
+	cursor: not-allowed;
+}
+
+.dvs-tr-estado {
+	min-height: 1.4em;
+	margin: 10px 0 0;
+	font-size: 0.85em;
+	color: #5a6474;
+}
+
+.dvs-tr-estado--error {
+	color: var(--dvs-lleno);
+	font-weight: 600;
+}
+
+/* Panel de reserva */
+
+.dvs-tr-panel {
+	margin-top: 18px;
+	border: 1px solid #d5dbe4;
+	border-radius: 14px;
+	padding: 18px;
+	background: #f8fafd;
+}
+
+.dvs-tr-panel-fecha {
+	margin: 0 0 12px;
+	font-size: 1.1em;
+}
+
+.dvs-tr-opciones {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+}
+
+@media (max-width: 560px) {
+	.dvs-tr-opciones { grid-template-columns: 1fr; }
+}
+
+.dvs-tr-tour {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	text-align: left;
+	border: 2px solid #d5dbe4;
+	border-radius: 12px;
+	background: #fff;
+	padding: 14px;
+	cursor: pointer;
+	font-size: 0.95em;
+}
+
+.dvs-tr-tour strong { font-size: 1.05em; }
+.dvs-tr-tour span { color: #5a6474; font-size: 0.85em; }
+.dvs-tr-tour .dvs-tr-precio { color: var(--dvs-acento); font-weight: 700; font-size: 1em; }
+.dvs-tr-tour .dvs-tr-motivo { color: var(--dvs-lleno); }
+
+.dvs-tr-tour:hover:not(:disabled) { border-color: var(--dvs-acento); }
+.dvs-tr-tour--activo { border-color: var(--dvs-acento); box-shadow: 0 0 0 3px rgba(18, 60, 120, 0.15); }
+.dvs-tr-tour--nodisp { opacity: 0.6; cursor: not-allowed; background: #f4f5f7; }
+
+/* Formulario */
+
+.dvs-tr-form {
+	margin-top: 16px;
+	display: grid;
+	gap: 10px;
+}
+
+.dvs-tr-form-titulo { margin: 0; font-size: 1em; }
+
+.dvs-tr-form label {
+	display: grid;
+	gap: 4px;
+	font-size: 0.85em;
+	font-weight: 600;
+	color: #38414f;
+}
+
+.dvs-tr-form input {
+	border: 1px solid #c8d0dc;
+	border-radius: 8px;
+	padding: 10px 12px;
+	font-size: 15px;
+	background: #fff;
+}
+
+.dvs-tr-form input:focus {
+	outline: none;
+	border-color: var(--dvs-acento);
+	box-shadow: 0 0 0 3px rgba(18, 60, 120, 0.12);
+}
+
+.dvs-tr-aviso {
+	margin: 0;
+	font-size: 0.8em;
+	color: #5a6474;
+}
+
+.dvs-tr-btn-pagar {
+	border: none;
+	border-radius: 10px;
+	background: var(--dvs-acento);
+	color: #fff;
+	font-size: 16px;
+	font-weight: 700;
+	padding: 13px 18px;
+	cursor: pointer;
+}
+
+.dvs-tr-btn-pagar:hover:not(:disabled) { filter: brightness(1.15); }
+.dvs-tr-btn-pagar:disabled { opacity: 0.6; cursor: wait; }
