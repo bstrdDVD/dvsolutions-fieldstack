@@ -14,22 +14,18 @@ class DVS_TR_Tours {
 	/**
 	 * Tours disponibles. El guía es uno solo, por lo que una reserva
 	 * en cualquiera de los dos bloquea el día completo para el otro.
+	 * Los nombres y descripciones se traducen según el idioma pedido.
 	 */
-	public static function tours() {
-		return array(
-			'termas' => array(
-				'nombre'      => __( 'Tour Termas', 'dvs-tour-reservas' ),
-				'inicio'      => '09:30',
-				'fin'         => '14:30',
-				'descripcion' => __( 'Salida 09:30 · Regreso 14:30', 'dvs-tour-reservas' ),
-			),
-			'embalse' => array(
-				'nombre'      => __( 'Tour Embalse', 'dvs-tour-reservas' ),
-				'inicio'      => '15:00',
-				'fin'         => '17:30',
-				'descripcion' => __( 'Salida 15:00 · Regreso 17:30', 'dvs-tour-reservas' ),
-			),
+	public static function tours( $idioma = 'es' ) {
+		$horarios = array(
+			'termas'  => array( 'inicio' => '09:30', 'fin' => '14:30' ),
+			'embalse' => array( 'inicio' => '15:00', 'fin' => '17:30' ),
 		);
+		$tours = array();
+		foreach ( $horarios as $clave => $horario ) {
+			$tours[ $clave ] = array_merge( $horario, DVS_TR_I18n::tour( $idioma, $clave ) );
+		}
+		return $tours;
 	}
 
 	public static function existe( $tour ) {

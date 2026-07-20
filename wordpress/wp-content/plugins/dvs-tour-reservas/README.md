@@ -1,14 +1,19 @@
 # DVS Tour Reservas
 
 Plugin de WordPress con calendario de reservas para dos tours que comparten un
-mismo guía, con redirección al **Botón de Pago del Banco de Chile**.
+mismo guía, con redirección al **Botón de Pago del Banco de Chile** y
+calendario **trilingüe (español / inglés / portugués)**.
+
+Pensado para integrarse en el sitio existente de CuatriYesoTour
+(WordPress): solo se instala el plugin y se inserta el shortcode en una
+página; no hay que cambiar el tema ni rediseñar el sitio.
 
 ## Tours configurados
 
 | Tour | Horario |
 |---|---|
-| Tour Termas | 09:30 – 14:30 |
-| Tour Embalse | 15:00 – 17:30 |
+| Tour Termas Valle de Colina | 09:30 – 14:30 |
+| Tour Embalse El Yeso | 15:00 – 17:30 |
 
 **Regla de guía único:** como el guía es el mismo para ambos tours, al quedar
 reservado cualquiera de los dos en una fecha, el otro tour se bloquea
@@ -34,6 +39,24 @@ mismo día"* en los ajustes.
    ```
    [dvs_tour_calendario]
    ```
+
+## Idiomas (español / inglés / portugués)
+
+El calendario incluye un selector **ES / EN / PT** en la esquina superior.
+Todos los textos visibles (calendario, tours, formulario, mensajes de
+disponibilidad y errores) cambian de idioma al instante, sin recargar la
+página, y la elección del visitante se recuerda en su navegador. No se
+necesita WPML, Polylang ni ningún otro plugin de traducción.
+
+- El correo de confirmación al cliente se envía **en el idioma que usó** al
+  reservar; el correo de aviso al negocio llega siempre en español e indica
+  el idioma del cliente (útil para saber cómo atenderlo).
+- El idioma inicial se puede fijar por página con el atributo del shortcode:
+  `[dvs_tour_calendario idioma="en"]` (valores: `es`, `en`, `pt`). Así puedes
+  tener una página `/booking` en inglés y otra `/reservas` en español usando
+  el mismo plugin.
+- Los textos están centralizados en `includes/class-dvs-tr-i18n.php` por si
+  quieres ajustar alguna traducción o el nombre de un tour.
 
 ## Flujo de reserva
 

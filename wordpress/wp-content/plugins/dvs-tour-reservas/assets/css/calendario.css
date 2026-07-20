@@ -10,6 +10,37 @@
 	--dvs-acento: #123c78; /* azul institucional */
 }
 
+/* Selector de idioma ES / EN / PT */
+
+.dvs-tr-idiomas {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+	margin-bottom: 10px;
+}
+
+.dvs-tr-idioma {
+	border: 1px solid #d5dbe4;
+	background: #fff;
+	border-radius: 8px;
+	padding: 6px 12px;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	color: #5a6474;
+	cursor: pointer;
+}
+
+.dvs-tr-idioma:hover {
+	background: #f0f4fa;
+}
+
+.dvs-tr-idioma--activo {
+	background: var(--dvs-acento);
+	border-color: var(--dvs-acento);
+	color: #fff;
+}
+
 .dvs-tr-cabecera {
 	display: flex;
 	align-items: center;

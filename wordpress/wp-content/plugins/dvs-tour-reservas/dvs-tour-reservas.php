@@ -17,6 +17,7 @@ define( 'DVS_TR_PLUGIN_FILE', __FILE__ );
 define( 'DVS_TR_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DVS_TR_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
+require_once DVS_TR_PLUGIN_DIR . 'includes/class-dvs-tr-i18n.php';
 require_once DVS_TR_PLUGIN_DIR . 'includes/class-dvs-tr-tours.php';
 require_once DVS_TR_PLUGIN_DIR . 'includes/class-dvs-tr-db.php';
 require_once DVS_TR_PLUGIN_DIR . 'includes/class-dvs-tr-front.php';
