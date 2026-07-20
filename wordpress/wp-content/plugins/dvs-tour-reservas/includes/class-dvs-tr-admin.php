@@ -57,6 +57,8 @@ class DVS_TR_Admin {
 			'dias_anticipacion'  => min( 365, max( 1, (int) ( isset( $entrada['dias_anticipacion'] ) ? $entrada['dias_anticipacion'] : $defaults['dias_anticipacion'] ) ) ),
 			'minutos_retencion'  => max( 0, (int) ( isset( $entrada['minutos_retencion'] ) ? $entrada['minutos_retencion'] : 0 ) ),
 			'email_notificacion' => sanitize_email( isset( $entrada['email_notificacion'] ) ? $entrada['email_notificacion'] : $defaults['email_notificacion'] ),
+			'traductor_activo'   => empty( $entrada['traductor_activo'] ) ? 0 : 1,
+			'frases_personalizadas' => sanitize_textarea_field( isset( $entrada['frases_personalizadas'] ) ? $entrada['frases_personalizadas'] : '' ),
 		);
 	}
 
@@ -205,6 +207,28 @@ class DVS_TR_Admin {
 					<tr>
 						<th scope="row"><label for="email_notificacion"><?php esc_html_e( 'Correo de notificación', 'dvs-tour-reservas' ); ?></label></th>
 						<td><input type="email" class="regular-text" id="email_notificacion" name="<?php echo esc_attr( $k ); ?>[email_notificacion]" value="<?php echo esc_attr( $o['email_notificacion'] ); ?>" /></td>
+					</tr>
+				</table>
+
+				<h2><?php esc_html_e( 'Traductor del sitio (ES / EN / PT)', 'dvs-tour-reservas' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Botón flotante de idioma', 'dvs-tour-reservas' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( $k ); ?>[traductor_activo]" value="1" <?php checked( $o['traductor_activo'] ); ?> />
+								<?php esc_html_e( 'Mostrar el botón 🌐 en la esquina superior derecha de todo el sitio para traducir el contenido a inglés y portugués.', 'dvs-tour-reservas' ); ?>
+							</label>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="frases_personalizadas"><?php esc_html_e( 'Frases adicionales', 'dvs-tour-reservas' ); ?></label></th>
+						<td>
+							<textarea id="frases_personalizadas" name="<?php echo esc_attr( $k ); ?>[frases_personalizadas]" rows="8" class="large-text code" placeholder="Bienvenidos a la cordillera || Welcome to the mountains || Bem-vindos à cordilheira"><?php echo esc_textarea( $o['frases_personalizadas'] ); ?></textarea>
+							<p class="description">
+								<?php esc_html_e( 'Si agregas o cambias textos en tu web y quedan sin traducir, añádelos aquí: una frase por línea con el formato "texto español || inglés || portugués". Estas frases tienen prioridad sobre las traducciones incluidas.', 'dvs-tour-reservas' ); ?>
+							</p>
+						</td>
 					</tr>
 				</table>
 

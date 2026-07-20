@@ -21,6 +21,7 @@ require_once DVS_TR_PLUGIN_DIR . 'includes/class-dvs-tr-i18n.php';
 require_once DVS_TR_PLUGIN_DIR . 'includes/class-dvs-tr-tours.php';
 require_once DVS_TR_PLUGIN_DIR . 'includes/class-dvs-tr-db.php';
 require_once DVS_TR_PLUGIN_DIR . 'includes/class-dvs-tr-front.php';
+require_once DVS_TR_PLUGIN_DIR . 'includes/class-dvs-tr-traductor.php';
 require_once DVS_TR_PLUGIN_DIR . 'includes/class-dvs-tr-admin.php';
 
 register_activation_hook( __FILE__, array( 'DVS_TR_DB', 'install' ) );
@@ -28,6 +29,7 @@ register_activation_hook( __FILE__, array( 'DVS_TR_DB', 'install' ) );
 add_action( 'plugins_loaded', function () {
 	DVS_TR_DB::maybe_upgrade();
 	DVS_TR_Front::init();
+	DVS_TR_Traductor::init();
 	if ( is_admin() ) {
 		DVS_TR_Admin::init();
 	}

@@ -54,7 +54,18 @@
 			idioma = nuevo;
 			try { window.localStorage.setItem('dvsTrIdioma', idioma); } catch (e) { /* sin persistencia */ }
 			aplicarIdioma();
+			// Avisa al traductor global del sitio (botón flotante 🌐).
+			window.dispatchEvent(new CustomEvent('dvsTrIdioma', { detail: idioma }));
 		});
+	});
+
+	// Cambios hechos desde el botón flotante 🌐 del sitio.
+	window.addEventListener('dvsTrIdioma', function (ev) {
+		var nuevo = ev.detail;
+		if (cfg.i18n[nuevo] && nuevo !== idioma) {
+			idioma = nuevo;
+			aplicarIdioma();
+		}
 	});
 
 	app.querySelectorAll('.dvs-tr-nav').forEach(function (btn) {

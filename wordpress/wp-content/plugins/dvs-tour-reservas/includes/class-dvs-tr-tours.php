@@ -52,6 +52,11 @@ class DVS_TR_Tours {
 			'minutos_retencion'    => 0,
 			// Correo del negocio que recibe aviso de nuevas reservas.
 			'email_notificacion'   => get_option( 'admin_email' ),
+			// Traductor global del sitio (botón flotante 🌐 ES/EN/PT).
+			'traductor_activo'     => 1,
+			// Frases extra del traductor, una por línea:
+			// "texto español || english || português".
+			'frases_personalizadas' => '',
 		);
 	}
 

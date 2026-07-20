@@ -40,9 +40,30 @@ mismo día"* en los ajustes.
    [dvs_tour_calendario]
    ```
 
-## Idiomas (español / inglés / portugués)
+## Traductor de todo el sitio (botón flotante 🌐)
 
-El calendario incluye un selector **ES / EN / PT** en la esquina superior.
+Al activar el plugin, aparece un **botón flotante 🌐 en la esquina superior
+derecha de todas las páginas** del sitio. Al pulsarlo se despliegan los
+idiomas 🇨🇱 Español · 🇬🇧 English · 🇧🇷 Português, y al elegir uno **todo el
+contenido visible de la página se traduce al instante**, sin recargar:
+menú, portada, fichas de los tours, beneficios, restricciones, contacto y
+pie de página. El plugin incluye el diccionario completo con los textos
+actuales de cuatriyesotour.com.
+
+- La elección del visitante se recuerda en su navegador y se aplica en todas
+  las páginas que visite.
+- Si agregas o cambias textos en la web y quedan sin traducir, entra a
+  **Tours → Ajustes → Frases adicionales** y añade una línea por frase con el
+  formato `texto español || inglés || portugués`. No hace falta tocar código.
+- El botón se puede desactivar desde los mismos ajustes.
+- El botón flotante y el calendario de reservas están sincronizados: cambiar
+  el idioma en uno cambia también el otro.
+
+## Idiomas del calendario de reservas
+
+El calendario incluye su propio selector **ES / EN / PT** (se oculta
+automáticamente cuando el botón flotante del sitio está activo, para no
+duplicar).
 Todos los textos visibles (calendario, tours, formulario, mensajes de
 disponibilidad y errores) cambian de idioma al instante, sin recargar la
 página, y la elección del visitante se recuerda en su navegador. No se
