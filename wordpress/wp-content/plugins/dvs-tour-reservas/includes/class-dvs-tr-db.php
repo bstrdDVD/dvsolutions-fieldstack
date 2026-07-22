@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class DVS_TR_DB {
 
 	const DB_VERSION_KEY = 'dvs_tr_db_version';
-	const DB_VERSION     = '1';
+	const DB_VERSION     = '2';
 
 	const ESTADO_PENDIENTE = 'pendiente';
 	const ESTADO_PAGADA    = 'pagada';
@@ -42,10 +42,12 @@ class DVS_TR_DB {
 			personas SMALLINT UNSIGNED NOT NULL DEFAULT 1,
 			estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
 			codigo VARCHAR(20) NOT NULL,
+			order_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
 			creado DATETIME NOT NULL,
 			PRIMARY KEY (id),
 			KEY fecha_estado (fecha, estado),
-			KEY codigo (codigo)
+			KEY codigo (codigo),
+			KEY order_id (order_id)
 		) {$charset};";
 
 		dbDelta( $sql );
@@ -117,7 +119,7 @@ class DVS_TR_DB {
 	 *
 	 * @return array|WP_Error La reserva creada o un error si el cupo ya no está disponible.
 	 */
-	public static function crear_reserva( $tour, $fecha, $nombre, $email, $telefono, $personas ) {
+	public static function crear_reserva( $tour, $fecha, $nombre, $email, $telefono, $personas, $order_id = 0 ) {
 		global $wpdb;
 		self::expirar_pendientes();
 
@@ -152,9 +154,10 @@ class DVS_TR_DB {
 				'personas' => $personas,
 				'estado'   => self::ESTADO_PENDIENTE,
 				'codigo'   => $codigo,
+				'order_id' => (int) $order_id,
 				'creado'   => current_time( 'mysql', true ),
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%d', '%s' )
 		);
 
 		if ( ! $ok ) {
@@ -181,6 +184,41 @@ class DVS_TR_DB {
 			array( '%s' ),
 			array( '%d' )
 		);
+	}
+
+	/**
+	 * Asocia una reserva a un pedido de WooCommerce.
+	 */
+	public static function vincular_order( $reserva_id, $order_id ) {
+		global $wpdb;
+		return (bool) $wpdb->update(
+			self::tabla(),
+			array( 'order_id' => (int) $order_id ),
+			array( 'id' => (int) $reserva_id ),
+			array( '%d' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Cambia el estado de todas las reservas de un pedido de WooCommerce.
+	 * Devuelve el número de reservas afectadas.
+	 */
+	public static function cambiar_estado_por_order( $order_id, $estado ) {
+		global $wpdb;
+		return (int) $wpdb->query( $wpdb->prepare(
+			'UPDATE ' . self::tabla() . ' SET estado = %s WHERE order_id = %d',
+			$estado,
+			(int) $order_id
+		) );
+	}
+
+	public static function reservas_por_order( $order_id ) {
+		global $wpdb;
+		return $wpdb->get_results( $wpdb->prepare(
+			'SELECT * FROM ' . self::tabla() . ' WHERE order_id = %d',
+			(int) $order_id
+		) );
 	}
 
 	public static function listar( $limite = 200 ) {

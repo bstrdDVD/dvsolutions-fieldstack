@@ -57,6 +57,9 @@ class DVS_TR_Admin {
 			'dias_anticipacion'  => min( 365, max( 1, (int) ( isset( $entrada['dias_anticipacion'] ) ? $entrada['dias_anticipacion'] : $defaults['dias_anticipacion'] ) ) ),
 			'minutos_retencion'  => max( 0, (int) ( isset( $entrada['minutos_retencion'] ) ? $entrada['minutos_retencion'] : 0 ) ),
 			'email_notificacion' => sanitize_email( isset( $entrada['email_notificacion'] ) ? $entrada['email_notificacion'] : $defaults['email_notificacion'] ),
+			'usar_woocommerce'   => empty( $entrada['usar_woocommerce'] ) ? 0 : 1,
+			'producto_termas'    => max( 0, (int) ( isset( $entrada['producto_termas'] ) ? $entrada['producto_termas'] : 0 ) ),
+			'producto_embalse'   => max( 0, (int) ( isset( $entrada['producto_embalse'] ) ? $entrada['producto_embalse'] : 0 ) ),
 			'traductor_activo'   => empty( $entrada['traductor_activo'] ) ? 0 : 1,
 			'frases_personalizadas' => sanitize_textarea_field( isset( $entrada['frases_personalizadas'] ) ? $entrada['frases_personalizadas'] : '' ),
 		);
@@ -174,6 +177,66 @@ class DVS_TR_Admin {
 					<tr>
 						<th scope="row"><label for="precio_embalse"><?php esc_html_e( 'Precio Tour Embalse (CLP)', 'dvs-tour-reservas' ); ?></label></th>
 						<td><input type="number" min="0" id="precio_embalse" name="<?php echo esc_attr( $k ); ?>[precio_embalse]" value="<?php echo esc_attr( $o['precio_embalse'] ); ?>" /></td>
+					</tr>
+				</table>
+
+				<h2><?php esc_html_e( 'Cobro con WooCommerce (Banchile Pagos)', 'dvs-tour-reservas' ); ?></h2>
+				<?php
+				$wc_ok        = class_exists( 'WooCommerce' );
+				$productos_wc = array();
+				if ( $wc_ok && function_exists( 'wc_get_products' ) ) {
+					foreach ( wc_get_products( array( 'limit' => 100, 'status' => 'publish', 'orderby' => 'title', 'order' => 'ASC' ) ) as $p ) {
+						$productos_wc[ $p->get_id() ] = $p->get_name();
+					}
+				}
+				?>
+				<?php if ( ! $wc_ok ) : ?>
+					<p class="description" style="color:#b32d2e;">
+						<?php esc_html_e( 'WooCommerce no está activo. Actívalo para cobrar las reservas con Banchile Pagos; mientras tanto se usa el enlace de pago fijo de arriba.', 'dvs-tour-reservas' ); ?>
+					</p>
+				<?php endif; ?>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Usar WooCommerce', 'dvs-tour-reservas' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( $k ); ?>[usar_woocommerce]" value="1" <?php checked( $o['usar_woocommerce'] ); ?> />
+								<?php esc_html_e( 'Al reservar, crear un pedido de WooCommerce y cobrar con la pasarela (Banchile Pagos). Recomendado.', 'dvs-tour-reservas' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'El pedido pasa a "pagado" automáticamente cuando Banchile confirma el pago (webhook), y la reserva bloquea el día para el otro tour. Si un pago se cancela o falla, el día se libera solo.', 'dvs-tour-reservas' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="producto_termas"><?php esc_html_e( 'Producto — Tour Termas', 'dvs-tour-reservas' ); ?></label></th>
+						<td>
+							<?php if ( $productos_wc ) : ?>
+								<select id="producto_termas" name="<?php echo esc_attr( $k ); ?>[producto_termas]">
+									<option value="0"><?php esc_html_e( '— Selecciona un producto —', 'dvs-tour-reservas' ); ?></option>
+									<?php foreach ( $productos_wc as $pid => $pnombre ) : ?>
+										<option value="<?php echo esc_attr( $pid ); ?>" <?php selected( (int) $o['producto_termas'], $pid ); ?>><?php echo esc_html( $pnombre . ' (#' . $pid . ')' ); ?></option>
+									<?php endforeach; ?>
+								</select>
+							<?php else : ?>
+								<input type="number" min="0" id="producto_termas" name="<?php echo esc_attr( $k ); ?>[producto_termas]" value="<?php echo esc_attr( $o['producto_termas'] ); ?>" />
+								<p class="description"><?php esc_html_e( 'ID del producto de WooCommerce del Tour Termas.', 'dvs-tour-reservas' ); ?></p>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="producto_embalse"><?php esc_html_e( 'Producto — Tour Embalse', 'dvs-tour-reservas' ); ?></label></th>
+						<td>
+							<?php if ( $productos_wc ) : ?>
+								<select id="producto_embalse" name="<?php echo esc_attr( $k ); ?>[producto_embalse]">
+									<option value="0"><?php esc_html_e( '— Selecciona un producto —', 'dvs-tour-reservas' ); ?></option>
+									<?php foreach ( $productos_wc as $pid => $pnombre ) : ?>
+										<option value="<?php echo esc_attr( $pid ); ?>" <?php selected( (int) $o['producto_embalse'], $pid ); ?>><?php echo esc_html( $pnombre . ' (#' . $pid . ')' ); ?></option>
+									<?php endforeach; ?>
+								</select>
+							<?php else : ?>
+								<input type="number" min="0" id="producto_embalse" name="<?php echo esc_attr( $k ); ?>[producto_embalse]" value="<?php echo esc_attr( $o['producto_embalse'] ); ?>" />
+								<p class="description"><?php esc_html_e( 'ID del producto de WooCommerce del Tour Embalse.', 'dvs-tour-reservas' ); ?></p>
+							<?php endif; ?>
+						</td>
 					</tr>
 				</table>
 

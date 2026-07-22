@@ -211,6 +211,25 @@ class DVS_TR_Front {
 			), 400 );
 		}
 
+		// Flujo con WooCommerce: crea el pedido y redirige a su página de pago
+		// (donde se cobra con Banchile Pagos). WooCommerce envía sus propios
+		// correos de pedido, por lo que aquí no duplicamos la notificación.
+		if ( DVS_TR_Tours::wc_activo() ) {
+			$resultado = DVS_TR_WooCommerce::crear_pedido( $tour, $fecha, $personas, $nombre, $email, $telefono );
+			if ( is_wp_error( $resultado ) ) {
+				$codigo = ( 'dvs_tr_no_disponible' === $resultado->get_error_code() ) ? 'err_no_disponible' : '';
+				wp_send_json_error( array(
+					'mensaje' => $resultado->get_error_message(),
+					'codigo'  => $codigo,
+				), 409 );
+			}
+			wp_send_json_success( array(
+				'codigo'  => $resultado['codigo'],
+				'pagoUrl' => $resultado['pagoUrl'],
+			) );
+		}
+
+		// Flujo heredado (sin WooCommerce): reserva simple + enlace de pago fijo.
 		$reserva = DVS_TR_DB::crear_reserva( $tour, $fecha, $nombre, $email, $telefono, $personas );
 		if ( is_wp_error( $reserva ) ) {
 			// El JS traduce este error con la clave indicada.

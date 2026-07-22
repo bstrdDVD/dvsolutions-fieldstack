@@ -22,6 +22,49 @@ automáticamente ese día. El calendario lo muestra al cliente con el mensaje
 segundo guía, puedes activar la opción *"Permitir reservar ambos tours el
 mismo día"* en los ajustes.
 
+## Integración con WooCommerce + Banchile Pagos (recomendado)
+
+Desde la v1.1 el calendario se cobra a través de **WooCommerce** y su pasarela
+(**Banchile Pagos**), en vez del enlace de pago fijo. El flujo real es:
+
+```
+Cliente elige fecha + tour en el calendario
+        ↓
+Se crea la reserva (pendiente) → BLOQUEA el día para el otro tour (guía único)
+        ↓
+Se crea un pedido de WooCommerce con el producto del tour, la fecha y los datos
+        ↓
+El cliente paga en Banchile Pagos
+        ↓
+Banchile confirma por webhook → el pedido pasa a "pagado"
+        ↓
+La reserva pasa a "pagada" (queda confirmada)
+```
+
+Si el pago se **cancela, falla o se reembolsa**, la reserva se cancela sola y
+**el día se libera** para ambos tours.
+
+### Cómo activarlo (después de certificar Banchile)
+
+1. Ten los dos productos de WooCommerce creados (uno por tour) y **márcalos
+   como "Virtual"** (no requieren envío).
+2. Ve a **Tours → Ajustes → Cobro con WooCommerce**:
+   - Activa **"Usar WooCommerce"**.
+   - En **Producto — Tour Termas** y **Producto — Tour Embalse**, elige el
+     producto correspondiente del desplegable.
+3. Crea una página "Reservas" con el shortcode `[dvs_tour_calendario]` y apunta
+   ahí tus botones "Reservar Ahora".
+4. En **WooCommerce → Ajustes → Pagos**, deja **Banchile Pagos** activo, y
+   asegúrate de permitir el pago como invitado.
+
+Cada reserva genera un pedido normal de WooCommerce (visible en
+**WooCommerce → Pedidos**) con la fecha, el tour y el código de reserva.
+
+> **Nota sobre precios:** el pedido usa el precio del producto por unidad
+> (cantidad 1). El número de personas se guarda como dato informativo en el
+> pedido. Si necesitas que el precio dependa de la cantidad de personas/motos,
+> se puede ajustar en una iteración posterior.
+
 ## Instalación
 
 1. Copia la carpeta `dvs-tour-reservas` dentro de `wp-content/plugins/` de tu

@@ -50,6 +50,12 @@ class DVS_TR_Tours {
 			// Minutos que una reserva pendiente de pago retiene el cupo.
 			// 0 = retiene indefinidamente hasta que el administrador la gestione.
 			'minutos_retencion'    => 0,
+			// Integración con WooCommerce: al reservar se crea un pedido y el
+			// pago se cobra con la pasarela de WooCommerce (Banchile Pagos).
+			'usar_woocommerce'     => 1,
+			// ID del producto de WooCommerce asociado a cada tour.
+			'producto_termas'      => 0,
+			'producto_embalse'     => 0,
 			// Correo del negocio que recibe aviso de nuevas reservas.
 			'email_notificacion'   => get_option( 'admin_email' ),
 			// Traductor global del sitio (botón flotante 🌐 ES/EN/PT).
@@ -79,5 +85,27 @@ class DVS_TR_Tours {
 
 	public static function precio( $tour ) {
 		return (int) self::opcion( 'termas' === $tour ? 'precio_termas' : 'precio_embalse' );
+	}
+
+	/**
+	 * ID del producto de WooCommerce asociado a un tour.
+	 */
+	public static function producto_id( $tour ) {
+		return (int) self::opcion( 'termas' === $tour ? 'producto_termas' : 'producto_embalse' );
+	}
+
+	/**
+	 * ¿Está operativa la integración con WooCommerce?
+	 * Requiere que la opción esté activa, que WooCommerce esté cargado y que
+	 * ambos tours tengan un producto asociado.
+	 */
+	public static function wc_activo() {
+		if ( ! self::opcion( 'usar_woocommerce' ) ) {
+			return false;
+		}
+		if ( ! class_exists( 'WooCommerce' ) ) {
+			return false;
+		}
+		return self::producto_id( 'termas' ) > 0 && self::producto_id( 'embalse' ) > 0;
 	}
 }
