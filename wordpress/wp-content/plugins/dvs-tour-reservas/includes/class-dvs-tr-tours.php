@@ -40,11 +40,18 @@ class DVS_TR_Tours {
 			// Precios de referencia (CLP) mostrados al cliente.
 			'precio_termas'        => 0,
 			'precio_embalse'       => 0,
-			// Si está activo, se permite reservar ambos tours el mismo día
-			// (por ejemplo si se contrata un segundo guía).
-			'permitir_mismo_dia'   => 0,
-			// Máximo de personas por reserva.
-			'max_personas'         => 10,
+			// Cupo de motos por tour por día (se reserva hasta agotarlo).
+			'capacidad_motos'      => 3,
+			// Máximo de motos por reserva.
+			'max_motos'            => 3,
+			// Días de la semana que opera cada tour (0=Dom … 6=Sáb).
+			// Por defecto: Termas sábado y domingo; Embalse solo sábado.
+			'dias_termas'          => array( 6, 0 ),
+			'dias_embalse'         => array( 6 ),
+			// Fechas de festivos habilitados (solo Termas), una por línea YYYY-MM-DD.
+			'fechas_festivas'      => '',
+			// Fechas cerradas / excepciones, una por línea YYYY-MM-DD.
+			'fechas_cerradas'      => '',
 			// Días hacia adelante que se pueden reservar.
 			'dias_anticipacion'    => 90,
 			// Minutos que una reserva pendiente de pago retiene el cupo.
@@ -107,5 +114,74 @@ class DVS_TR_Tours {
 			return false;
 		}
 		return self::producto_id( 'termas' ) > 0 && self::producto_id( 'embalse' ) > 0;
+	}
+
+	/**
+	 * Cupo de motos por día para un tour.
+	 */
+	public static function capacidad( $tour ) {
+		return max( 1, (int) self::opcion( 'capacidad_motos' ) );
+	}
+
+	/**
+	 * Máximo de motos que puede tomar una sola reserva.
+	 */
+	public static function max_motos() {
+		return max( 1, (int) self::opcion( 'max_motos' ) );
+	}
+
+	/**
+	 * Días de la semana (0=Dom … 6=Sáb) en que opera un tour.
+	 */
+	public static function dias_operacion( $tour ) {
+		$clave = 'termas' === $tour ? 'dias_termas' : 'dias_embalse';
+		$dias  = self::opcion( $clave );
+		return is_array( $dias ) ? array_map( 'intval', $dias ) : array();
+	}
+
+	/**
+	 * Extrae fechas válidas (YYYY-MM-DD) de un texto con una por línea.
+	 */
+	private static function parse_fechas( $texto ) {
+		$out = array();
+		foreach ( preg_split( '/[\r\n,]+/', (string) $texto ) as $linea ) {
+			$linea = trim( $linea );
+			if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $linea ) ) {
+				$out[] = $linea;
+			}
+		}
+		return $out;
+	}
+
+	public static function es_festivo( $fecha ) {
+		return in_array( $fecha, self::parse_fechas( self::opcion( 'fechas_festivas' ) ), true );
+	}
+
+	public static function es_cerrado( $fecha ) {
+		return in_array( $fecha, self::parse_fechas( self::opcion( 'fechas_cerradas' ) ), true );
+	}
+
+	/**
+	 * Tours que se ofrecen en una fecha concreta, según el día de la semana,
+	 * los festivos habilitados (solo Termas) y las fechas cerradas.
+	 *
+	 * @return array Lista de claves de tour (ej. array('termas','embalse')).
+	 */
+	public static function tours_ofrecidos( $fecha ) {
+		if ( self::es_cerrado( $fecha ) ) {
+			return array();
+		}
+		$wd        = (int) gmdate( 'w', strtotime( $fecha . ' 12:00:00' ) ); // 0=Dom … 6=Sáb
+		$ofrecidos = array();
+		foreach ( array_keys( self::tours() ) as $tour ) {
+			if ( in_array( $wd, self::dias_operacion( $tour ), true ) ) {
+				$ofrecidos[] = $tour;
+			}
+		}
+		// Festivos habilitados: solo Termas.
+		if ( self::es_festivo( $fecha ) && ! in_array( 'termas', $ofrecidos, true ) ) {
+			$ofrecidos[] = 'termas';
+		}
+		return $ofrecidos;
 	}
 }

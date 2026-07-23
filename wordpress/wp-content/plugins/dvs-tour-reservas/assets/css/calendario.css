@@ -198,7 +198,9 @@
 .dvs-tr-tour strong { font-size: 1.05em; }
 .dvs-tr-tour span { color: #5a6474; font-size: 0.85em; }
 .dvs-tr-tour .dvs-tr-precio { color: var(--dvs-acento); font-weight: 700; font-size: 1em; }
-.dvs-tr-tour .dvs-tr-motivo { color: var(--dvs-lleno); }
+.dvs-tr-tour .dvs-tr-motivo { color: var(--dvs-lleno); font-weight: 600; }
+.dvs-tr-tour .dvs-tr-cupo { color: var(--dvs-libre); font-weight: 600; font-size: 0.82em; }
+.dvs-tr-hint { color: #7a8698; font-size: 0.8em; }
 
 .dvs-tr-tour:hover:not(:disabled) { border-color: var(--dvs-acento); }
 .dvs-tr-tour--activo { border-color: var(--dvs-acento); box-shadow: 0 0 0 3px rgba(18, 60, 120, 0.15); }

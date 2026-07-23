@@ -41,24 +41,25 @@ class DVS_TR_WooCommerce {
 	 *
 	 * @return array|WP_Error array( 'pagoUrl', 'codigo', 'order_id' ) o error.
 	 */
-	public static function crear_pedido( $tour, $fecha, $personas, $nombre, $email, $telefono ) {
+	public static function crear_pedido( $tour, $fecha, $motos, $nombre, $email, $telefono ) {
 		if ( ! DVS_TR_Tours::wc_activo() ) {
 			return new WP_Error( 'dvs_tr_wc_inactivo', __( 'La reserva en línea no está disponible en este momento.', 'dvs-tour-reservas' ) );
 		}
 
+		$motos       = max( 1, (int) $motos );
 		$producto_id = DVS_TR_Tours::producto_id( $tour );
 		$producto    = wc_get_product( $producto_id );
 		if ( ! $producto ) {
 			return new WP_Error( 'dvs_tr_wc_sin_producto', __( 'El tour no tiene un producto configurado.', 'dvs-tour-reservas' ) );
 		}
 
-		// 1. Reserva pendiente (bloquea el cupo con lock de fila).
-		$reserva = DVS_TR_DB::crear_reserva( $tour, $fecha, $nombre, $email, $telefono, $personas );
+		// 1. Reserva pendiente (bloquea el cupo de motos con lock de fila).
+		$reserva = DVS_TR_DB::crear_reserva( $tour, $fecha, $nombre, $email, $telefono, $motos );
 		if ( is_wp_error( $reserva ) ) {
 			return $reserva;
 		}
 
-		// 2. Pedido de WooCommerce.
+		// 2. Pedido de WooCommerce (una unidad por moto).
 		try {
 			$order = wc_create_order();
 			if ( is_wp_error( $order ) || ! $order ) {
@@ -67,7 +68,7 @@ class DVS_TR_WooCommerce {
 
 			$nombres    = self::separar_nombre( $nombre );
 			$tour_es    = DVS_TR_I18n::tour( 'es', $tour );
-			$item_id    = $order->add_product( $producto, 1 );
+			$item_id    = $order->add_product( $producto, $motos );
 
 			if ( $item_id ) {
 				$item = $order->get_item( $item_id );
@@ -75,7 +76,7 @@ class DVS_TR_WooCommerce {
 					$item->add_meta_data( __( 'Tour', 'dvs-tour-reservas' ), $tour_es['nombre'], true );
 					$item->add_meta_data( __( 'Fecha del tour', 'dvs-tour-reservas' ), $fecha, true );
 					$item->add_meta_data( __( 'Horario', 'dvs-tour-reservas' ), $tour_es['descripcion'], true );
-					$item->add_meta_data( __( 'Personas', 'dvs-tour-reservas' ), $personas, true );
+					$item->add_meta_data( __( 'Motos', 'dvs-tour-reservas' ), $motos, true );
 					$item->add_meta_data( __( 'Código de reserva', 'dvs-tour-reservas' ), $reserva['codigo'], true );
 					$item->save();
 				}

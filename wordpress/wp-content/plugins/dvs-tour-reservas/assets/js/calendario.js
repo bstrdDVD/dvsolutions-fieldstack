@@ -165,23 +165,27 @@
 			celda.textContent = parseInt(fecha.slice(8), 10);
 			celda.setAttribute('data-fecha', fecha);
 
-			var totalTours = Object.keys(T().tours).length;
-			if (info.disponibles.length === 0) {
+			var ofrecidos = info.ofrecidos || [];
+			if (ofrecidos.length === 0) {
+				// Día sin tours (no opera ese día de la semana).
 				celda.classList.add('dvs-tr-dia--lleno');
 				celda.disabled = true;
-				if (info.ocupados.length > 0 && info.ocupados.length < totalTours) {
-					celda.classList.add('dvs-tr-dia--guiaocupado');
-					celda.title = T().guia_ocupado;
-				}
-			} else if (info.disponibles.length < totalTours) {
+			} else if (info.disponibles.length === 0) {
+				// Se ofrece, pero sin motos disponibles (agotado).
+				celda.classList.add('dvs-tr-dia--lleno');
+				celda.disabled = true;
+			} else if (info.disponibles.length < ofrecidos.length) {
+				// Algún tour del día ya está agotado.
 				celda.classList.add('dvs-tr-dia--parcial');
 			} else {
 				celda.classList.add('dvs-tr-dia--libre');
 			}
 
-			celda.addEventListener('click', function () {
-				abrirPanel(fecha, info, null);
-			});
+			if (!celda.disabled) {
+				celda.addEventListener('click', function () {
+					abrirPanel(fecha, info, null);
+				});
+			}
 			elGrilla.appendChild(celda);
 		});
 	}
@@ -194,36 +198,39 @@
 		elPanelFecha.textContent = formatoFecha(fecha);
 		elOpciones.innerHTML = '';
 
-		Object.keys(T().tours).forEach(function (clave) {
+		// Solo se muestran los tours que se ofrecen ese día.
+		var ofrecidos = info.ofrecidos || [];
+		ofrecidos.forEach(function (clave) {
 			var tour = T().tours[clave];
+			if (!tour) { return; }
 			var precio = cfg.precios[clave] || 0;
-			var disponible = info.disponibles.indexOf(clave) !== -1;
+			var motosLibres = (info.motos && typeof info.motos[clave] !== 'undefined') ? info.motos[clave] : 0;
+			var disponible = motosLibres > 0;
 
 			var caja = document.createElement('button');
 			caja.type = 'button';
 			caja.className = 'dvs-tr-tour' + (disponible ? '' : ' dvs-tr-tour--nodisp');
 			caja.disabled = !disponible;
 
-			var motivo = '';
-			if (!disponible) {
-				motivo = info.ocupados.indexOf(clave) !== -1 ? T().reservado : T().guia_otro_tour;
-			}
+			var estadoCupo = disponible
+				? ('<span class="dvs-tr-cupo">' + motosLibres + ' ' + T().motos_disp + '</span>')
+				: ('<span class="dvs-tr-motivo">' + T().agotado + '</span>');
 
 			caja.innerHTML =
 				'<strong>' + tour.nombre + '</strong>' +
 				'<span>' + tour.descripcion + '</span>' +
-				(precio > 0 ? '<span class="dvs-tr-precio">' + clp(precio) + ' CLP</span>' : '') +
-				(motivo ? '<span class="dvs-tr-motivo">' + motivo + '</span>' : '');
+				(precio > 0 ? '<span class="dvs-tr-precio">' + clp(precio) + ' CLP ' + T().por_moto + '</span>' : '') +
+				estadoCupo;
 
 			if (disponible) {
 				caja.addEventListener('click', function () {
-					seleccionarTour(clave, fecha, caja);
+					seleccionarTour(clave, fecha, caja, motosLibres);
 				});
 			}
 			elOpciones.appendChild(caja);
 
 			if (disponible && tourPreseleccionado === clave) {
-				seleccionarTour(clave, fecha, caja);
+				seleccionarTour(clave, fecha, caja, motosLibres);
 			}
 		});
 
@@ -232,7 +239,7 @@
 		}
 	}
 
-	function seleccionarTour(clave, fecha, caja) {
+	function seleccionarTour(clave, fecha, caja, motosLibres) {
 		seleccion = { fecha: fecha, tour: clave };
 		elOpciones.querySelectorAll('.dvs-tr-tour').forEach(function (b) {
 			b.classList.remove('dvs-tr-tour--activo');
@@ -240,7 +247,12 @@
 		caja.classList.add('dvs-tr-tour--activo');
 		elFormTitulo.textContent = T().tours[clave].nombre + ' — ' + formatoFecha(fecha);
 		elForm.hidden = false;
-		elForm.personas.max = cfg.maxPersonas;
+		// Máximo de motos = mínimo entre el tope por reserva y las motos libres.
+		var tope = Math.min(cfg.maxMotos, motosLibres || cfg.maxMotos);
+		elForm.motos.max = tope;
+		if (parseInt(elForm.motos.value, 10) > tope) {
+			elForm.motos.value = tope;
+		}
 		elForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 	}
 
@@ -279,7 +291,7 @@
 		datos.append('nombre', elForm.nombre.value);
 		datos.append('email', elForm.email.value);
 		datos.append('telefono', elForm.telefono.value);
-		datos.append('personas', elForm.personas.value);
+		datos.append('motos', elForm.motos.value);
 		datos.append('idioma', idioma);
 
 		fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: datos })

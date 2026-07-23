@@ -56,12 +56,12 @@ class DVS_TR_Front {
 		}
 
 		wp_localize_script( 'dvs-tr-calendario', 'dvsTrConfig', array(
-			'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
-			'nonce'       => wp_create_nonce( 'dvs_tr_publico' ),
-			'idioma'      => $idioma,
-			'i18n'        => DVS_TR_I18n::cadenas(),
-			'precios'     => $precios,
-			'maxPersonas' => (int) DVS_TR_Tours::opcion( 'max_personas' ),
+			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+			'nonce'     => wp_create_nonce( 'dvs_tr_publico' ),
+			'idioma'    => $idioma,
+			'i18n'      => DVS_TR_I18n::cadenas(),
+			'precios'   => $precios,
+			'maxMotos'  => DVS_TR_Tours::max_motos(),
 		) );
 
 		$t = function ( $clave ) use ( $idioma ) {
@@ -114,8 +114,9 @@ class DVS_TR_Front {
 						<input type="tel" name="telefono" required maxlength="40" autocomplete="tel" placeholder="+56 9 …" />
 					</label>
 					<label>
-						<span data-dvs-i18n="lbl_personas"><?php echo esc_html( $t( 'lbl_personas' ) ); ?></span>
-						<input type="number" name="personas" min="1" value="1" required />
+						<span data-dvs-i18n="lbl_motos"><?php echo esc_html( $t( 'lbl_motos' ) ); ?></span>
+						<input type="number" name="motos" min="1" value="1" required />
+						<small class="dvs-tr-hint" data-dvs-i18n="hint_motos"><?php echo esc_html( $t( 'hint_motos' ) ); ?></small>
 					</label>
 					<p class="dvs-tr-aviso" data-dvs-i18n="aviso_pago"><?php echo esc_html( $t( 'aviso_pago' ) ); ?></p>
 					<button type="submit" class="dvs-tr-btn-pagar" data-dvs-i18n="btn_pagar"><?php echo esc_html( $t( 'btn_pagar' ) ); ?></button>
@@ -142,27 +143,33 @@ class DVS_TR_Front {
 		$desde    = sprintf( '%04d-%02d-01', $anio, $mes );
 		$hasta    = sprintf( '%04d-%02d-%02d', $anio, $mes, $dias_mes );
 
-		$ocupados = DVS_TR_DB::tours_ocupados_por_fecha( $desde, $hasta );
+		$reservadas = DVS_TR_DB::motos_por_fecha( $desde, $hasta );
 
 		$hoy    = current_time( 'Y-m-d' );
 		$limite = gmdate( 'Y-m-d', strtotime( $hoy . ' + ' . (int) DVS_TR_Tours::opcion( 'dias_anticipacion' ) . ' days' ) );
 
 		$dias = array();
 		for ( $d = 1; $d <= $dias_mes; $d++ ) {
-			$fecha       = sprintf( '%04d-%02d-%02d', $anio, $mes, $d );
-			$del_dia     = isset( $ocupados[ $fecha ] ) ? $ocupados[ $fecha ] : array();
-			$reservable  = ( $fecha > $hoy && $fecha <= $limite );
+			$fecha      = sprintf( '%04d-%02d-%02d', $anio, $mes, $d );
+			$del_dia    = isset( $reservadas[ $fecha ] ) ? $reservadas[ $fecha ] : array();
+			$reservable = ( $fecha > $hoy && $fecha <= $limite );
+			$ofrecidos  = DVS_TR_Tours::tours_ofrecidos( $fecha );
 
+			// Motos disponibles por tour (solo tours ofrecidos ese día).
+			$motos       = array();
 			$disponibles = array();
-			foreach ( array_keys( DVS_TR_Tours::tours() ) as $tour ) {
-				if ( $reservable && DVS_TR_DB::tour_disponible( $tour, $fecha, $del_dia ) ) {
+			foreach ( $ofrecidos as $tour ) {
+				$libres = $reservable ? DVS_TR_DB::motos_disponibles( $tour, $fecha, $del_dia ) : 0;
+				$motos[ $tour ] = $libres;
+				if ( $libres > 0 ) {
 					$disponibles[] = $tour;
 				}
 			}
 
 			$dias[ $fecha ] = array(
+				'ofrecidos'   => $ofrecidos,
 				'disponibles' => $disponibles,
-				'ocupados'    => array_values( $del_dia ),
+				'motos'       => $motos,
 			);
 		}
 
@@ -180,7 +187,7 @@ class DVS_TR_Front {
 		$nombre   = isset( $_POST['nombre'] ) ? sanitize_text_field( wp_unslash( $_POST['nombre'] ) ) : '';
 		$email    = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
 		$telefono = isset( $_POST['telefono'] ) ? sanitize_text_field( wp_unslash( $_POST['telefono'] ) ) : '';
-		$personas = isset( $_POST['personas'] ) ? (int) $_POST['personas'] : 0;
+		$motos    = isset( $_POST['motos'] ) ? (int) $_POST['motos'] : 0;
 		$idioma   = isset( $_POST['idioma'] ) ? sanitize_key( $_POST['idioma'] ) : DVS_TR_I18n::IDIOMA_DEFECTO;
 		if ( ! DVS_TR_I18n::valido( $idioma ) ) {
 			$idioma = DVS_TR_I18n::IDIOMA_DEFECTO;
@@ -200,27 +207,34 @@ class DVS_TR_Front {
 		if ( '' === $nombre || ! is_email( $email ) || '' === $telefono ) {
 			wp_send_json_error( array( 'mensaje' => __( 'Completa todos los datos de contacto.', 'dvs-tour-reservas' ) ), 400 );
 		}
-		$max = (int) DVS_TR_Tours::opcion( 'max_personas' );
-		if ( $personas < 1 || $personas > $max ) {
+		$max = DVS_TR_Tours::max_motos();
+		if ( $motos < 1 || $motos > $max ) {
 			wp_send_json_error( array(
 				'mensaje' => sprintf(
-					/* translators: %d: máximo de personas */
-					__( 'El número de personas debe estar entre 1 y %d.', 'dvs-tour-reservas' ),
+					/* translators: %d: máximo de motos */
+					__( 'El número de motos debe estar entre 1 y %d.', 'dvs-tour-reservas' ),
 					$max
 				),
 			), 400 );
+		}
+		// El tour debe ofrecerse en esa fecha (día de la semana / festivo).
+		if ( ! in_array( $tour, DVS_TR_Tours::tours_ofrecidos( $fecha ), true ) ) {
+			wp_send_json_error( array(
+				'mensaje' => __( 'Ese tour no está disponible en la fecha seleccionada.', 'dvs-tour-reservas' ),
+				'codigo'  => 'err_no_disponible',
+			), 409 );
 		}
 
 		// Flujo con WooCommerce: crea el pedido y redirige a su página de pago
 		// (donde se cobra con Banchile Pagos). WooCommerce envía sus propios
 		// correos de pedido, por lo que aquí no duplicamos la notificación.
 		if ( DVS_TR_Tours::wc_activo() ) {
-			$resultado = DVS_TR_WooCommerce::crear_pedido( $tour, $fecha, $personas, $nombre, $email, $telefono );
+			$resultado = DVS_TR_WooCommerce::crear_pedido( $tour, $fecha, $motos, $nombre, $email, $telefono );
 			if ( is_wp_error( $resultado ) ) {
-				$codigo = ( 'dvs_tr_no_disponible' === $resultado->get_error_code() ) ? 'err_no_disponible' : '';
+				$sin_cupo = in_array( $resultado->get_error_code(), array( 'dvs_tr_no_disponible', 'dvs_tr_sin_cupo' ), true );
 				wp_send_json_error( array(
 					'mensaje' => $resultado->get_error_message(),
-					'codigo'  => $codigo,
+					'codigo'  => $sin_cupo ? 'err_no_disponible' : '',
 				), 409 );
 			}
 			wp_send_json_success( array(
@@ -230,7 +244,7 @@ class DVS_TR_Front {
 		}
 
 		// Flujo heredado (sin WooCommerce): reserva simple + enlace de pago fijo.
-		$reserva = DVS_TR_DB::crear_reserva( $tour, $fecha, $nombre, $email, $telefono, $personas );
+		$reserva = DVS_TR_DB::crear_reserva( $tour, $fecha, $nombre, $email, $telefono, $motos );
 		if ( is_wp_error( $reserva ) ) {
 			// El JS traduce este error con la clave indicada.
 			wp_send_json_error( array(
@@ -239,7 +253,7 @@ class DVS_TR_Front {
 			), 409 );
 		}
 
-		self::notificar_reserva( $reserva, $nombre, $email, $telefono, $personas, $idioma );
+		self::notificar_reserva( $reserva, $nombre, $email, $telefono, $motos, $idioma );
 
 		wp_send_json_success( array(
 			'codigo'  => $reserva['codigo'],
@@ -251,7 +265,7 @@ class DVS_TR_Front {
 	 * Correo al negocio (siempre en español) y confirmación al cliente
 	 * en el idioma que usó en el calendario.
 	 */
-	private static function notificar_reserva( $reserva, $nombre, $email, $telefono, $personas, $idioma ) {
+	private static function notificar_reserva( $reserva, $nombre, $email, $telefono, $motos, $idioma ) {
 		$tour_es = DVS_TR_I18n::tour( 'es', $reserva['tour'] );
 
 		$cuerpo = sprintf(
@@ -262,7 +276,7 @@ class DVS_TR_Front {
 			__( 'Fecha', 'dvs-tour-reservas' ), $reserva['fecha'],
 			__( 'Nombre', 'dvs-tour-reservas' ), $nombre,
 			__( 'Email', 'dvs-tour-reservas' ), $email,
-			__( 'Personas', 'dvs-tour-reservas' ), $personas,
+			__( 'Motos', 'dvs-tour-reservas' ), $motos,
 			__( 'Teléfono', 'dvs-tour-reservas' ), $telefono,
 			__( 'Idioma del cliente', 'dvs-tour-reservas' ), strtoupper( $idioma )
 		);

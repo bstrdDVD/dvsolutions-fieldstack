@@ -2,9 +2,13 @@
 /**
  * Tabla de reservas y lógica de disponibilidad.
  *
- * Regla central: el guía es uno solo. Una reserva activa (pendiente o pagada)
- * de cualquier tour bloquea el día completo para ambos tours, salvo que la
- * opción "permitir_mismo_dia" esté activa, en cuyo caso solo bloquea su tour.
+ * Modelo:
+ *   - Cada tour se ofrece ciertos días de la semana (config en DVS_TR_Tours):
+ *       · Sábado  → Termas + Embalse
+ *       · Domingo → solo Termas
+ *       · Festivos habilitados → solo Termas
+ *   - Cada tour tiene un cupo de motos por día (3 por defecto). Varias reservas
+ *     comparten ese cupo hasta agotarlo.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -14,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class DVS_TR_DB {
 
 	const DB_VERSION_KEY = 'dvs_tr_db_version';
-	const DB_VERSION     = '2';
+	const DB_VERSION     = '3';
 
 	const ESTADO_PENDIENTE = 'pendiente';
 	const ESTADO_PAGADA    = 'pagada';
@@ -39,6 +43,7 @@ class DVS_TR_DB {
 			nombre VARCHAR(120) NOT NULL,
 			email VARCHAR(120) NOT NULL,
 			telefono VARCHAR(40) NOT NULL DEFAULT '',
+			motos SMALLINT UNSIGNED NOT NULL DEFAULT 1,
 			personas SMALLINT UNSIGNED NOT NULL DEFAULT 1,
 			estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
 			codigo VARCHAR(20) NOT NULL,
@@ -46,6 +51,7 @@ class DVS_TR_DB {
 			creado DATETIME NOT NULL,
 			PRIMARY KEY (id),
 			KEY fecha_estado (fecha, estado),
+			KEY tour_fecha (tour, fecha),
 			KEY codigo (codigo),
 			KEY order_id (order_id)
 		) {$charset};";
@@ -79,15 +85,16 @@ class DVS_TR_DB {
 	}
 
 	/**
-	 * Devuelve las reservas activas (pendientes o pagadas) de un rango de fechas,
-	 * como mapa fecha => lista de tours reservados.
+	 * Motos activas (pendientes o pagadas) reservadas por fecha y tour,
+	 * en un rango. Devuelve mapa: fecha => ( tour => motos_reservadas ).
 	 */
-	public static function tours_ocupados_por_fecha( $desde, $hasta ) {
+	public static function motos_por_fecha( $desde, $hasta ) {
 		global $wpdb;
 		self::expirar_pendientes();
 
 		$filas = $wpdb->get_results( $wpdb->prepare(
-			'SELECT fecha, tour FROM ' . self::tabla() . ' WHERE fecha BETWEEN %s AND %s AND estado IN (%s, %s)',
+			'SELECT fecha, tour, SUM(motos) AS motos FROM ' . self::tabla()
+			. ' WHERE fecha BETWEEN %s AND %s AND estado IN (%s, %s) GROUP BY fecha, tour',
 			$desde,
 			$hasta,
 			self::ESTADO_PENDIENTE,
@@ -96,49 +103,69 @@ class DVS_TR_DB {
 
 		$mapa = array();
 		foreach ( $filas as $fila ) {
-			$mapa[ $fila->fecha ][] = $fila->tour;
+			$mapa[ $fila->fecha ][ $fila->tour ] = (int) $fila->motos;
 		}
 		return $mapa;
 	}
 
 	/**
-	 * Indica si un tour puede reservarse en una fecha dada.
+	 * Motos disponibles de un tour en una fecha, dado el mapa de reservadas
+	 * de ese día (tour => motos). Considera si el tour se ofrece ese día.
+	 *
+	 * @return int Motos disponibles (0 si no se ofrece o está lleno).
 	 */
-	public static function tour_disponible( $tour, $fecha, $ocupados_del_dia ) {
-		if ( in_array( $tour, $ocupados_del_dia, true ) ) {
-			return false; // Ese tour ya está reservado ese día.
+	public static function motos_disponibles( $tour, $fecha, $reservadas_del_dia ) {
+		if ( ! in_array( $tour, DVS_TR_Tours::tours_ofrecidos( $fecha ), true ) ) {
+			return 0;
 		}
-		if ( ! DVS_TR_Tours::opcion( 'permitir_mismo_dia' ) && ! empty( $ocupados_del_dia ) ) {
-			return false; // El guía ya está comprometido en el otro tour ese día.
-		}
-		return true;
+		$capacidad  = DVS_TR_Tours::capacidad( $tour );
+		$reservadas = isset( $reservadas_del_dia[ $tour ] ) ? (int) $reservadas_del_dia[ $tour ] : 0;
+		return max( 0, $capacidad - $reservadas );
 	}
 
 	/**
-	 * Crea una reserva de forma segura contra reservas simultáneas.
+	 * Crea una reserva de forma segura contra reservas simultáneas, validando
+	 * que el tour se ofrezca ese día y que queden motos disponibles.
 	 *
-	 * @return array|WP_Error La reserva creada o un error si el cupo ya no está disponible.
+	 * @return array|WP_Error La reserva creada o un error.
 	 */
-	public static function crear_reserva( $tour, $fecha, $nombre, $email, $telefono, $personas, $order_id = 0 ) {
+	public static function crear_reserva( $tour, $fecha, $nombre, $email, $telefono, $motos, $order_id = 0 ) {
 		global $wpdb;
 		self::expirar_pendientes();
+
+		$motos = max( 1, (int) $motos );
+
+		// El tour debe ofrecerse ese día (día de la semana / festivo).
+		if ( ! in_array( $tour, DVS_TR_Tours::tours_ofrecidos( $fecha ), true ) ) {
+			return new WP_Error(
+				'dvs_tr_no_disponible',
+				__( 'Ese tour no está disponible en la fecha seleccionada.', 'dvs-tour-reservas' )
+			);
+		}
 
 		$tabla = self::tabla();
 		$wpdb->query( 'START TRANSACTION' );
 
-		// Bloqueo de las filas del día para evitar doble reserva simultánea.
-		$activas = $wpdb->get_col( $wpdb->prepare(
-			"SELECT tour FROM {$tabla} WHERE fecha = %s AND estado IN (%s, %s) FOR UPDATE",
+		// Bloqueo de las filas del tour+día para evitar sobreventa simultánea.
+		$reservadas = (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COALESCE(SUM(motos),0) FROM {$tabla} WHERE tour = %s AND fecha = %s AND estado IN (%s, %s) FOR UPDATE",
+			$tour,
 			$fecha,
 			self::ESTADO_PENDIENTE,
 			self::ESTADO_PAGADA
 		) );
 
-		if ( ! self::tour_disponible( $tour, $fecha, $activas ) ) {
+		$capacidad = DVS_TR_Tours::capacidad( $tour );
+		if ( $reservadas + $motos > $capacidad ) {
 			$wpdb->query( 'ROLLBACK' );
+			$restantes = max( 0, $capacidad - $reservadas );
 			return new WP_Error(
-				'dvs_tr_no_disponible',
-				__( 'Lo sentimos, esta fecha acaba de ser reservada. El guía ya está comprometido ese día.', 'dvs-tour-reservas' )
+				'dvs_tr_sin_cupo',
+				sprintf(
+					/* translators: %d: motos disponibles */
+					_n( 'Lo sentimos, solo queda %d moto disponible para esa fecha.', 'Lo sentimos, solo quedan %d motos disponibles para esa fecha.', $restantes, 'dvs-tour-reservas' ),
+					$restantes
+				)
 			);
 		}
 
@@ -151,13 +178,14 @@ class DVS_TR_DB {
 				'nombre'   => $nombre,
 				'email'    => $email,
 				'telefono' => $telefono,
-				'personas' => $personas,
+				'motos'    => $motos,
+				'personas' => $motos * 2,
 				'estado'   => self::ESTADO_PENDIENTE,
 				'codigo'   => $codigo,
 				'order_id' => (int) $order_id,
 				'creado'   => current_time( 'mysql', true ),
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%d', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%s' )
 		);
 
 		if ( ! $ok ) {
@@ -172,6 +200,7 @@ class DVS_TR_DB {
 			'codigo' => $codigo,
 			'tour'   => $tour,
 			'fecha'  => $fecha,
+			'motos'  => $motos,
 		);
 	}
 

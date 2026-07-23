@@ -52,8 +52,12 @@ class DVS_TR_Admin {
 			'pago_url_embalse'   => esc_url_raw( isset( $entrada['pago_url_embalse'] ) ? $entrada['pago_url_embalse'] : '' ),
 			'precio_termas'      => max( 0, (int) ( isset( $entrada['precio_termas'] ) ? $entrada['precio_termas'] : 0 ) ),
 			'precio_embalse'     => max( 0, (int) ( isset( $entrada['precio_embalse'] ) ? $entrada['precio_embalse'] : 0 ) ),
-			'permitir_mismo_dia' => empty( $entrada['permitir_mismo_dia'] ) ? 0 : 1,
-			'max_personas'       => min( 100, max( 1, (int) ( isset( $entrada['max_personas'] ) ? $entrada['max_personas'] : $defaults['max_personas'] ) ) ),
+			'capacidad_motos'    => min( 50, max( 1, (int) ( isset( $entrada['capacidad_motos'] ) ? $entrada['capacidad_motos'] : $defaults['capacidad_motos'] ) ) ),
+			'max_motos'          => min( 50, max( 1, (int) ( isset( $entrada['max_motos'] ) ? $entrada['max_motos'] : $defaults['max_motos'] ) ) ),
+			'dias_termas'        => self::sanitizar_dias( isset( $entrada['dias_termas'] ) ? $entrada['dias_termas'] : array() ),
+			'dias_embalse'       => self::sanitizar_dias( isset( $entrada['dias_embalse'] ) ? $entrada['dias_embalse'] : array() ),
+			'fechas_festivas'    => self::sanitizar_fechas( isset( $entrada['fechas_festivas'] ) ? $entrada['fechas_festivas'] : '' ),
+			'fechas_cerradas'    => self::sanitizar_fechas( isset( $entrada['fechas_cerradas'] ) ? $entrada['fechas_cerradas'] : '' ),
 			'dias_anticipacion'  => min( 365, max( 1, (int) ( isset( $entrada['dias_anticipacion'] ) ? $entrada['dias_anticipacion'] : $defaults['dias_anticipacion'] ) ) ),
 			'minutos_retencion'  => max( 0, (int) ( isset( $entrada['minutos_retencion'] ) ? $entrada['minutos_retencion'] : 0 ) ),
 			'email_notificacion' => sanitize_email( isset( $entrada['email_notificacion'] ) ? $entrada['email_notificacion'] : $defaults['email_notificacion'] ),
@@ -63,6 +67,38 @@ class DVS_TR_Admin {
 			'traductor_activo'   => empty( $entrada['traductor_activo'] ) ? 0 : 1,
 			'frases_personalizadas' => sanitize_textarea_field( isset( $entrada['frases_personalizadas'] ) ? $entrada['frases_personalizadas'] : '' ),
 		);
+	}
+
+	/**
+	 * Sanitiza una lista de días de la semana (0=Dom … 6=Sáb).
+	 */
+	private static function sanitizar_dias( $dias ) {
+		if ( ! is_array( $dias ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $dias as $d ) {
+			$d = (int) $d;
+			if ( $d >= 0 && $d <= 6 && ! in_array( $d, $out, true ) ) {
+				$out[] = $d;
+			}
+		}
+		sort( $out );
+		return $out;
+	}
+
+	/**
+	 * Sanitiza un textarea de fechas: deja solo YYYY-MM-DD válidas, una por línea.
+	 */
+	private static function sanitizar_fechas( $texto ) {
+		$out = array();
+		foreach ( preg_split( '/[\r\n,]+/', (string) $texto ) as $linea ) {
+			$linea = trim( $linea );
+			if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $linea ) && strtotime( $linea ) ) {
+				$out[] = $linea;
+			}
+		}
+		return implode( "\n", array_unique( $out ) );
 	}
 
 	public static function accion_cambiar_estado() {
@@ -106,7 +142,7 @@ class DVS_TR_Admin {
 						<th><?php esc_html_e( 'Tour', 'dvs-tour-reservas' ); ?></th>
 						<th><?php esc_html_e( 'Cliente', 'dvs-tour-reservas' ); ?></th>
 						<th><?php esc_html_e( 'Contacto', 'dvs-tour-reservas' ); ?></th>
-						<th><?php esc_html_e( 'Personas', 'dvs-tour-reservas' ); ?></th>
+						<th><?php esc_html_e( 'Motos', 'dvs-tour-reservas' ); ?></th>
 						<th><?php esc_html_e( 'Estado', 'dvs-tour-reservas' ); ?></th>
 						<th><?php esc_html_e( 'Acciones', 'dvs-tour-reservas' ); ?></th>
 					</tr>
@@ -122,7 +158,7 @@ class DVS_TR_Admin {
 							<td><?php echo esc_html( isset( $tours[ $r->tour ] ) ? $tours[ $r->tour ]['nombre'] : $r->tour ); ?></td>
 							<td><?php echo esc_html( $r->nombre ); ?></td>
 							<td><?php echo esc_html( $r->email ); ?><br/><?php echo esc_html( $r->telefono ); ?></td>
-							<td><?php echo (int) $r->personas; ?></td>
+							<td><?php echo isset( $r->motos ) ? (int) $r->motos : (int) $r->personas; ?></td>
 							<td><strong><?php echo esc_html( $r->estado ); ?></strong></td>
 							<td>
 								<?php
@@ -240,22 +276,71 @@ class DVS_TR_Admin {
 					</tr>
 				</table>
 
-				<h2><?php esc_html_e( 'Reglas de reserva', 'dvs-tour-reservas' ); ?></h2>
+				<h2><?php esc_html_e( 'Días de operación y cupo', 'dvs-tour-reservas' ); ?></h2>
+				<?php
+				$nombres_dias = array(
+					1 => __( 'Lun', 'dvs-tour-reservas' ),
+					2 => __( 'Mar', 'dvs-tour-reservas' ),
+					3 => __( 'Mié', 'dvs-tour-reservas' ),
+					4 => __( 'Jue', 'dvs-tour-reservas' ),
+					5 => __( 'Vie', 'dvs-tour-reservas' ),
+					6 => __( 'Sáb', 'dvs-tour-reservas' ),
+					0 => __( 'Dom', 'dvs-tour-reservas' ),
+				);
+				$dias_termas  = is_array( $o['dias_termas'] ) ? array_map( 'intval', $o['dias_termas'] ) : array();
+				$dias_embalse = is_array( $o['dias_embalse'] ) ? array_map( 'intval', $o['dias_embalse'] ) : array();
+				?>
 				<table class="form-table" role="presentation">
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Guía único', 'dvs-tour-reservas' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Días que opera Tour Termas', 'dvs-tour-reservas' ); ?></th>
 						<td>
-							<label>
-								<input type="checkbox" name="<?php echo esc_attr( $k ); ?>[permitir_mismo_dia]" value="1" <?php checked( $o['permitir_mismo_dia'] ); ?> />
-								<?php esc_html_e( 'Permitir reservar ambos tours el mismo día (actívalo solo si cuentas con un segundo guía).', 'dvs-tour-reservas' ); ?>
-							</label>
-							<p class="description"><?php esc_html_e( 'Desactivado (recomendado): al reservar Termas (09:30–14:30) o Embalse (15:00–17:30), el otro tour queda bloqueado ese día porque el guía está ocupado.', 'dvs-tour-reservas' ); ?></p>
+							<?php foreach ( $nombres_dias as $num => $etiqueta ) : ?>
+								<label style="margin-right:12px;display:inline-block;">
+									<input type="checkbox" name="<?php echo esc_attr( $k ); ?>[dias_termas][]" value="<?php echo esc_attr( $num ); ?>" <?php checked( in_array( $num, $dias_termas, true ) ); ?> />
+									<?php echo esc_html( $etiqueta ); ?>
+								</label>
+							<?php endforeach; ?>
+							<p class="description"><?php esc_html_e( 'Por defecto: sábado y domingo.', 'dvs-tour-reservas' ); ?></p>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="max_personas"><?php esc_html_e( 'Máximo de personas por reserva', 'dvs-tour-reservas' ); ?></label></th>
-						<td><input type="number" min="1" max="100" id="max_personas" name="<?php echo esc_attr( $k ); ?>[max_personas]" value="<?php echo esc_attr( $o['max_personas'] ); ?>" /></td>
+						<th scope="row"><?php esc_html_e( 'Días que opera Tour Embalse', 'dvs-tour-reservas' ); ?></th>
+						<td>
+							<?php foreach ( $nombres_dias as $num => $etiqueta ) : ?>
+								<label style="margin-right:12px;display:inline-block;">
+									<input type="checkbox" name="<?php echo esc_attr( $k ); ?>[dias_embalse][]" value="<?php echo esc_attr( $num ); ?>" <?php checked( in_array( $num, $dias_embalse, true ) ); ?> />
+									<?php echo esc_html( $etiqueta ); ?>
+								</label>
+							<?php endforeach; ?>
+							<p class="description"><?php esc_html_e( 'Por defecto: solo sábado.', 'dvs-tour-reservas' ); ?></p>
+						</td>
 					</tr>
+					<tr>
+						<th scope="row"><label for="capacidad_motos"><?php esc_html_e( 'Cupo de motos por tour por día', 'dvs-tour-reservas' ); ?></label></th>
+						<td>
+							<input type="number" min="1" max="50" id="capacidad_motos" name="<?php echo esc_attr( $k ); ?>[capacidad_motos]" value="<?php echo esc_attr( $o['capacidad_motos'] ); ?>" />
+							<p class="description"><?php esc_html_e( 'Se aceptan reservas hasta agotar estas motos (por defecto 3). Varias reservas comparten el cupo del día.', 'dvs-tour-reservas' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="max_motos"><?php esc_html_e( 'Máximo de motos por reserva', 'dvs-tour-reservas' ); ?></label></th>
+						<td><input type="number" min="1" max="50" id="max_motos" name="<?php echo esc_attr( $k ); ?>[max_motos]" value="<?php echo esc_attr( $o['max_motos'] ); ?>" /></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="fechas_festivas"><?php esc_html_e( 'Festivos habilitados (solo Termas)', 'dvs-tour-reservas' ); ?></label></th>
+						<td>
+							<textarea id="fechas_festivas" name="<?php echo esc_attr( $k ); ?>[fechas_festivas]" rows="3" class="regular-text code" placeholder="2026-09-18"><?php echo esc_textarea( $o['fechas_festivas'] ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'Una fecha por línea (formato AAAA-MM-DD). En estos días se habilita solo el Tour Termas, aunque no sea fin de semana.', 'dvs-tour-reservas' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="fechas_cerradas"><?php esc_html_e( 'Fechas cerradas (sin tours)', 'dvs-tour-reservas' ); ?></label></th>
+						<td>
+							<textarea id="fechas_cerradas" name="<?php echo esc_attr( $k ); ?>[fechas_cerradas]" rows="3" class="regular-text code" placeholder="2026-12-25"><?php echo esc_textarea( $o['fechas_cerradas'] ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'Una fecha por línea (AAAA-MM-DD). Bloquea por completo esos días (ej. un sábado que no operarás).', 'dvs-tour-reservas' ); ?></p>
+						</td>
+					</tr>
+
 					<tr>
 						<th scope="row"><label for="dias_anticipacion"><?php esc_html_e( 'Días de anticipación máxima', 'dvs-tour-reservas' ); ?></label></th>
 						<td><input type="number" min="1" max="365" id="dias_anticipacion" name="<?php echo esc_attr( $k ); ?>[dias_anticipacion]" value="<?php echo esc_attr( $o['dias_anticipacion'] ); ?>" /></td>

@@ -15,12 +15,19 @@ página; no hay que cambiar el tema ni rediseñar el sitio.
 | Tour Termas Valle de Colina | 09:30 – 14:30 |
 | Tour Embalse El Yeso | 15:00 – 17:30 |
 
-**Regla de guía único:** como el guía es el mismo para ambos tours, al quedar
-reservado cualquiera de los dos en una fecha, el otro tour se bloquea
-automáticamente ese día. El calendario lo muestra al cliente con el mensaje
-"el guía está en el otro tour este día". Si más adelante cuentas con un
-segundo guía, puedes activar la opción *"Permitir reservar ambos tours el
-mismo día"* en los ajustes.
+**Disponibilidad por día y cupo de motos:**
+
+- Cada tour se ofrece ciertos **días de la semana** (configurable). Por defecto:
+  - **Sábado:** Termas + Embalse
+  - **Domingo:** solo Termas
+  - Resto de la semana: cerrado
+- **Festivos:** puedes habilitar fechas puntuales (solo Termas).
+- **Fechas cerradas:** puedes bloquear días concretos (ej. un sábado que no operarás).
+- **Cupo:** cada tour tiene un cupo de **motos por día** (3 por defecto). Se
+  aceptan reservas hasta agotarlo; varias reservas comparten el mismo cupo.
+  El cliente reserva por **motos** (cada moto para hasta 2 personas).
+
+Todo esto se configura en **Tours → Ajustes → Días de operación y cupo**.
 
 ## Integración con WooCommerce + Banchile Pagos (recomendado)
 
