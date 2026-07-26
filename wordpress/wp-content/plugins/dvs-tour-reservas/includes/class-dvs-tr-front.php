@@ -37,15 +37,10 @@ class DVS_TR_Front {
 			DVS_TR_VERSION,
 			true
 		);
-	}
 
-	/**
-	 * Shortcode. Acepta el atributo idioma para fijar el idioma inicial:
-	 * [dvs_tour_calendario idioma="es"] (es, en o pt).
-	 */
-	public static function shortcode_calendario( $atts = array() ) {
-		$atts   = shortcode_atts( array( 'idioma' => DVS_TR_I18n::IDIOMA_DEFECTO ), $atts, 'dvs_tour_calendario' );
-		$idioma = DVS_TR_I18n::valido( $atts['idioma'] ) ? $atts['idioma'] : DVS_TR_I18n::IDIOMA_DEFECTO;
+		if ( is_admin() ) {
+			return;
+		}
 
 		wp_enqueue_style( 'dvs-tr-calendario' );
 		wp_enqueue_script( 'dvs-tr-calendario' );
@@ -58,11 +53,20 @@ class DVS_TR_Front {
 		wp_localize_script( 'dvs-tr-calendario', 'dvsTrConfig', array(
 			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
 			'nonce'     => wp_create_nonce( 'dvs_tr_publico' ),
-			'idioma'    => $idioma,
+			'idioma'    => DVS_TR_I18n::IDIOMA_DEFECTO,
 			'i18n'      => DVS_TR_I18n::cadenas(),
 			'precios'   => $precios,
 			'maxMotos'  => DVS_TR_Tours::max_motos(),
 		) );
+	}
+
+	/**
+	 * Shortcode. Acepta el atributo idioma para fijar el idioma inicial:
+	 * [dvs_tour_calendario idioma="es"] (es, en o pt).
+	 */
+	public static function shortcode_calendario( $atts = array() ) {
+		$atts   = shortcode_atts( array( 'idioma' => DVS_TR_I18n::IDIOMA_DEFECTO ), $atts, 'dvs_tour_calendario' );
+		$idioma = DVS_TR_I18n::valido( $atts['idioma'] ) ? $atts['idioma'] : DVS_TR_I18n::IDIOMA_DEFECTO;
 
 		$t = function ( $clave ) use ( $idioma ) {
 			return DVS_TR_I18n::t( $idioma, $clave );
