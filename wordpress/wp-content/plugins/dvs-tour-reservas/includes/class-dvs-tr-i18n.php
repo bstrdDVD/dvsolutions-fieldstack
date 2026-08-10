@@ -29,11 +29,11 @@ class DVS_TR_I18n {
 				'tours' => array(
 					'termas'  => array(
 						'nombre'      => 'Tour Termas Valle de Colina',
-						'descripcion' => 'Salida 09:30 · Regreso 14:30',
+						'descripcion' => 'Reabre en Octubre 2026',
 					),
 					'embalse' => array(
-						'nombre'      => 'Tour Embalse El Yeso',
-						'descripcion' => 'Salida 15:00 · Regreso 17:30',
+						'nombre'      => 'Camino al Embalse',
+						'descripcion' => 'Salidas: 09:30-12:30 y 14:30-17:00',
 					),
 				),
 				'elige_fecha'        => 'Elige tu fecha',
@@ -74,11 +74,11 @@ class DVS_TR_I18n {
 				'tours' => array(
 					'termas'  => array(
 						'nombre'      => 'Valle de Colina Hot Springs Tour',
-						'descripcion' => 'Departure 09:30 · Return 14:30',
+						'descripcion' => 'Reopens in October 2026',
 					),
 					'embalse' => array(
-						'nombre'      => 'El Yeso Reservoir Tour',
-						'descripcion' => 'Departure 15:00 · Return 17:30',
+						'nombre'      => 'Road to El Yeso Reservoir',
+						'descripcion' => 'Departures: 09:30-12:30 and 14:30-17:00',
 					),
 				),
 				'elige_fecha'        => 'Pick your date',
@@ -119,11 +119,11 @@ class DVS_TR_I18n {
 				'tours' => array(
 					'termas'  => array(
 						'nombre'      => 'Passeio às Termas Valle de Colina',
-						'descripcion' => 'Saída 09:30 · Retorno 14:30',
+						'descripcion' => 'Reabre em Outubro de 2026',
 					),
 					'embalse' => array(
-						'nombre'      => 'Passeio ao Embalse El Yeso',
-						'descripcion' => 'Saída 15:00 · Retorno 17:30',
+						'nombre'      => 'Caminho para o Embalse El Yeso',
+						'descripcion' => 'Saídas: 09:30-12:30 e 14:30-17:00',
 					),
 				),
 				'elige_fecha'        => 'Escolha sua data',

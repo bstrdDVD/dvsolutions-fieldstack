@@ -19,7 +19,7 @@ class DVS_TR_Tours {
 	public static function tours( $idioma = 'es' ) {
 		$horarios = array(
 			'termas'  => array( 'inicio' => '09:30', 'fin' => '14:30' ),
-			'embalse' => array( 'inicio' => '15:00', 'fin' => '17:30' ),
+			'embalse' => array( 'inicio' => '09:30', 'fin' => '17:00' ), // Camino al Embalse: 09:30-12:30 y 14:30-17:00
 		);
 		$tours = array();
 		foreach ( $horarios as $clave => $horario ) {
@@ -39,11 +39,11 @@ class DVS_TR_Tours {
 			'pago_url_embalse'     => '',
 			// Precios de referencia (CLP) mostrados al cliente.
 			'precio_termas'        => 0,
-			'precio_embalse'       => 0,
+			'precio_embalse'       => 105000,
 			// Cupo de motos por tour por día (se reserva hasta agotarlo).
-			'capacidad_motos'      => 3,
+			'capacidad_motos'      => 4,
 			// Máximo de motos por reserva.
-			'max_motos'            => 3,
+			'max_motos'            => 4,
 			// Días de la semana que opera cada tour (0=Dom … 6=Sáb).
 			// Por defecto: Termas sábado y domingo; Embalse solo sábado.
 			'dias_termas'          => array( 6, 0 ),
