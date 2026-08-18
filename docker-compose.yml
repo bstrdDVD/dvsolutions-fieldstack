@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # Base de Datos
+  mysql:
+    image: mysql:8.0
+    container_name: adventure_tourism_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-wordpress}
+      MYSQL_USER: ${MYSQL_USER:-wordpress}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-wordpresspass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    networks:
+      - adventure_tourism_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # WordPress
+  wordpress:
+    image: wordpress:latest
+    container_name: adventure_tourism_wordpress
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: mysql:3306
+      WORDPRESS_DB_USER: ${MYSQL_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-wordpresspass}
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE:-wordpress}
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_DEBUG: ${WORDPRESS_DEBUG:-false}
+      WORDPRESS_DEBUG_LOG: /var/www/html/wp-content/debug.log
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./wordpress/wp-content/themes:/var/www/html/wp-content/themes
+      - ./wordpress/wp-content/plugins:/var/www/html/wp-content/plugins
+      - ./php.ini:/usr/local/etc/php/conf.d/custom.ini
+    ports:
+      - "8080:80"
+    networks:
+      - adventure_tourism_network
+
+  # PhpMyAdmin (opcional, para administrar BD)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: adventure_tourism_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: ${MYSQL_USER:-wordpress}
+      PMA_PASSWORD: ${MYSQL_PASSWORD:-wordpresspass}
+    ports:
+      - "8081:80"
+    networks:
+      - adventure_tourism_network
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:
+    driver: local
+  wordpress_data:
+    driver: local
+
+networks:
+  adventure_tourism_network:
+    driver: bridge

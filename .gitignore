@@ -1,0 +1,93 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+vendor/
+
+# WordPress
+wordpress/wp-config.php
+wordpress/wp-content/uploads/
+wordpress/wp-content/backup-*
+wordpress/wp-content/updraft/
+wordpress/wp-content/cache/
+wordpress/wp-content/debug.log
+wordpress/wp-*.log
+
+# Database backups
+*.sql
+*.sql.gz
+*.sql.bak
+
+# OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+~*
+
+# IDE
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# Logs
+logs/
+*.log
+
+# Node/Build
+dist/
+build/
+.next/
+out/
+
+# Package managers
+package-lock.json
+yarn.lock
+composer.lock
+
+# SSL certificates (local development)
+*.crt
+*.key
+*.pem
+
+# Secrets and credentials
+.aws/
+.gcloud/
+.firebase/
+secrets.yml
+secrets.json
+
+# Database volumes (if not using Docker volumes)
+mysql_data/
+postgres_data/
+
+# Cache
+.cache/
+.phpcs-cache
+
+# PHPStan
+.phpstan-cache
+
+# IDE files specific
+.vscode/launch.json
+.vscode/settings.json
+.idea/workspace.xml
+.idea/tasks.xml
+
+# Keep but ignore changes to these
+wordpress/wp-content/mu-plugins/
+wordpress/wp-content/plugins/
