@@ -16,10 +16,11 @@ wordpress/wp-content/cache/
 wordpress/wp-content/debug.log
 wordpress/wp-*.log
 
-# Database backups
-*.sql
+# Database backups (pero NO los scripts de instalación en sql/)
+!sql/*.sql
 *.sql.gz
 *.sql.bak
+backup*.sql
 
 # OS
 .DS_Store
