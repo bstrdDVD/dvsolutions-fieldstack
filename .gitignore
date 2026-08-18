@@ -17,10 +17,11 @@ wordpress/wp-content/debug.log
 wordpress/wp-*.log
 
 # Database backups (pero NO los scripts de instalación en sql/)
-!sql/*.sql
+backup*.sql
 *.sql.gz
 *.sql.bak
-backup*.sql
+# PERMITIR scripts en carpeta sql/ (antes de descartar *.sql)
+!sql/
 
 # OS
 .DS_Store
